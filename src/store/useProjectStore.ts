@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import seedrandom from 'seedrandom';
+import { eventBus } from '@/lib/events/EventBus';
 
 export interface Trait {
   id: string;
@@ -74,12 +75,21 @@ const initialState = {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   ...initialState,
 
-  setProjectName: (name) => set({ projectName: name }),
+  setProjectName: (name) => {
+    set({ projectName: name });
+    eventBus.emit('project/saved', { name, timestamp: Date.now() });
+  },
 
-  addTraitClass: (traitClass) =>
+  addTraitClass: (traitClass) => {
     set((state) => ({
       traitClasses: [...state.traitClasses, traitClass],
-    })),
+    }));
+    eventBus.emit('assets/added', {
+      className: traitClass.name,
+      traitName: 'class',
+      source: 'manual',
+    });
+  },
 
   updateTraitClass: (id, updates) =>
     set((state) => ({
@@ -93,12 +103,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       traitClasses: state.traitClasses.filter((tc) => tc.id !== id),
     })),
 
-  addTrait: (classId, trait) =>
+  addTrait: (classId, trait) => {
+    const traitClass = get().traitClasses.find((tc) => tc.id === classId);
     set((state) => ({
       traitClasses: state.traitClasses.map((tc) =>
         tc.id === classId ? { ...tc, traits: [...tc.traits, trait] } : tc
       ),
-    })),
+    }));
+    if (traitClass) {
+      eventBus.emit('assets/added', {
+        className: traitClass.name,
+        traitName: trait.name,
+        source: trait.imageSrc || 'unknown',
+      });
+    }
+  },
 
   updateTrait: (classId, traitId, updates) =>
     set((state) => ({
@@ -114,14 +133,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       ),
     })),
 
-  removeTrait: (classId, traitId) =>
+  removeTrait: (classId, traitId) => {
+    const traitClass = get().traitClasses.find((tc) => tc.id === classId);
+    const trait = traitClass?.traits.find((t) => t.id === traitId);
     set((state) => ({
       traitClasses: state.traitClasses.map((tc) =>
         tc.id === classId
           ? { ...tc, traits: tc.traits.filter((t) => t.id !== traitId) }
           : tc
       ),
-    })),
+    }));
+    if (traitClass && trait) {
+      eventBus.emit('assets/removed', {
+        className: traitClass.name,
+        traitName: trait.name,
+      });
+    }
+  },
 
   addRule: (rule) =>
     set((state) => ({
@@ -150,7 +178,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       fxConfigs: state.fxConfigs.filter((fx) => fx.id !== id),
     })),
 
-  setSeed: (seed) => set({ seed }),
+  setSeed: (seed) => {
+    const oldSeed = get().seed;
+    set({ seed });
+    eventBus.emit('rng/seedChanged', { oldSeed, newSeed: seed });
+  },
 
   setCollectionSize: (size) => set({ collectionSize: size }),
 
@@ -174,18 +206,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadProject: (json) => {
     try {
       const data = JSON.parse(json);
+      const projectName = data.projectName || initialState.projectName;
       set({
-        projectName: data.projectName || initialState.projectName,
+        projectName,
         traitClasses: data.traitClasses || [],
         rules: data.rules || [],
         fxConfigs: data.fxConfigs || [],
         seed: data.seed || initialState.seed,
         collectionSize: data.collectionSize || initialState.collectionSize,
       });
+      eventBus.emit('project/loaded', { name: projectName, timestamp: Date.now() });
     } catch (error) {
       console.error('Failed to load project:', error);
     }
   },
 
-  resetProject: () => set(initialState),
+  resetProject: () => {
+    set(initialState);
+    eventBus.emit('project/reset', { timestamp: Date.now() });
+  },
 }));
