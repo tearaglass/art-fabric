@@ -10,38 +10,61 @@ export const FXBuilderTab = () => {
   const { fxConfigs, addFXConfig, updateFXConfig, removeFXConfig } = useProjectStore();
   const { toast } = useToast();
 
-  const handleAddCRT = () => {
+  const handleAddFX = (type: 'crt' | 'halftone' | 'glitch') => {
+    const fxPresets = {
+      crt: {
+        name: 'CRT Effect',
+        params: { intensity: 0.3, curvature: 0.1 }
+      },
+      halftone: {
+        name: 'Halftone',
+        params: { dotSize: 4, angle: 22.5, contrast: 1.2 }
+      },
+      glitch: {
+        name: 'Glitch',
+        params: { intensity: 0.5, frequency: 0.1 }
+      }
+    };
+
+    const preset = fxPresets[type];
     const newFx = {
       id: `fx-${Date.now()}`,
-      name: 'CRT Effect',
-      type: 'crt' as const,
+      name: preset.name,
+      type,
       enabled: true,
-      params: {
-        intensity: 0.3,
-        curvature: 0.1,
-      },
+      params: preset.params,
     };
     addFXConfig(newFx);
     toast({
       title: 'FX Added',
-      description: 'CRT effect added to pipeline.',
+      description: `${preset.name} added to pipeline.`,
     });
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card className="p-6 border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Available Effects</h2>
-          <Button onClick={handleAddCRT} className="gradient-primary">
-            <Plus className="w-4 h-4 mr-2" />
-            Add CRT Effect
-          </Button>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold mb-2">FX Builder</h2>
+          <p className="text-sm text-muted-foreground">
+            GPU-accelerated visual effects applied after layer compositing.
+          </p>
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          GPU-accelerated visual effects applied after layer compositing.
-        </p>
+        <div className="flex gap-2">
+          <Button onClick={() => handleAddFX('crt')} variant="outline" className="flex-1">
+            <Plus className="w-4 h-4 mr-2" />
+            CRT
+          </Button>
+          <Button onClick={() => handleAddFX('halftone')} variant="outline" className="flex-1">
+            <Plus className="w-4 h-4 mr-2" />
+            Halftone
+          </Button>
+          <Button onClick={() => handleAddFX('glitch')} variant="outline" className="flex-1">
+            <Plus className="w-4 h-4 mr-2" />
+            Glitch
+          </Button>
+        </div>
       </Card>
 
       {/* Active FX */}
@@ -112,6 +135,109 @@ export const FXBuilderTab = () => {
                       }
                       min={0}
                       max={0.5}
+                      step={0.01}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {fx.type === 'halftone' && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label>Dot Size</label>
+                      <span className="font-mono">{fx.params.dotSize?.toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[fx.params.dotSize || 4]}
+                      onValueChange={([dotSize]) =>
+                        updateFXConfig(fx.id, {
+                          params: { ...fx.params, dotSize },
+                        })
+                      }
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label>Angle</label>
+                      <span className="font-mono">{fx.params.angle?.toFixed(1)}°</span>
+                    </div>
+                    <Slider
+                      value={[fx.params.angle || 22.5]}
+                      onValueChange={([angle]) =>
+                        updateFXConfig(fx.id, {
+                          params: { ...fx.params, angle },
+                        })
+                      }
+                      min={0}
+                      max={360}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label>Contrast</label>
+                      <span className="font-mono">{fx.params.contrast?.toFixed(2)}</span>
+                    </div>
+                    <Slider
+                      value={[fx.params.contrast || 1.2]}
+                      onValueChange={([contrast]) =>
+                        updateFXConfig(fx.id, {
+                          params: { ...fx.params, contrast },
+                        })
+                      }
+                      min={0.5}
+                      max={3}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {fx.type === 'glitch' && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label>Intensity</label>
+                      <span className="font-mono">{fx.params.intensity?.toFixed(2)}</span>
+                    </div>
+                    <Slider
+                      value={[fx.params.intensity || 0.5]}
+                      onValueChange={([intensity]) =>
+                        updateFXConfig(fx.id, {
+                          params: { ...fx.params, intensity },
+                        })
+                      }
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <label>Frequency</label>
+                      <span className="font-mono">{fx.params.frequency?.toFixed(2)}</span>
+                    </div>
+                    <Slider
+                      value={[fx.params.frequency || 0.1]}
+                      onValueChange={([frequency]) =>
+                        updateFXConfig(fx.id, {
+                          params: { ...fx.params, frequency },
+                        })
+                      }
+                      min={0}
+                      max={1}
                       step={0.01}
                       className="w-full"
                     />
