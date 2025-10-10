@@ -3,10 +3,11 @@ import { useProjectStore, Trait } from '@/store/useProjectStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shuffle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Shuffle, RefreshCw, AlertTriangle, Sparkles, Copy, X } from 'lucide-react';
 import seedrandom from 'seedrandom';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 import { RulesEngine, RuleViolation } from '@/lib/rules/RulesEngine';
+import { useToast } from '@/hooks/use-toast';
 
 export const PreviewTab = () => {
   const { traitClasses, rules, seed, fxConfigs } = useProjectStore();
@@ -15,6 +16,11 @@ export const PreviewTab = () => {
   const [currentSeed, setCurrentSeed] = useState(seed);
   const [selectedTraits, setSelectedTraits] = useState<Record<string, string>>({});
   const [violations, setViolations] = useState<RuleViolation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [renderProgress, setRenderProgress] = useState('');
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false);
+  const { toast } = useToast();
 
   const generateRandomTraits = (seedValue: string) => {
     const rng = seedrandom(seedValue);
@@ -65,6 +71,9 @@ export const PreviewTab = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    setIsLoading(true);
+    setRenderProgress('Preparing canvas...');
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -72,11 +81,13 @@ export const PreviewTab = () => {
     const sortedClasses = [...traitClasses].sort((a, b) => a.zIndex - b.zIndex);
 
     // Render each selected trait using TraitRenderer
-    for (const traitClass of sortedClasses) {
+    for (let i = 0; i < sortedClasses.length; i++) {
+      const traitClass = sortedClasses[i];
       const selectedTraitId = selectedTraits[traitClass.id];
       const trait = traitClass.traits.find((t) => t.id === selectedTraitId);
 
       if (trait) {
+        setRenderProgress(`Rendering ${traitClass.name}...`);
         const renderedCanvas = await rendererRef.current.renderTrait(
           trait,
           canvas.width,
@@ -87,10 +98,21 @@ export const PreviewTab = () => {
       }
     }
 
-    // Apply FX if enabled (simplified - just CRT for now)
+    // Apply FX if enabled
+    setRenderProgress('Applying effects...');
     const crtFx = fxConfigs.find((fx) => fx.type === 'crt' && fx.enabled);
     if (crtFx) {
       applyCRTEffect(ctx, canvas.width, canvas.height, crtFx.params);
+    }
+
+    setIsLoading(false);
+    setRenderProgress('');
+    
+    // Show welcome overlay on first render
+    const hasSeenWelcome = localStorage.getItem('preview-welcome-seen');
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+      localStorage.setItem('preview-welcome-seen', 'true');
     }
   };
 
@@ -124,6 +146,14 @@ export const PreviewTab = () => {
     setSelectedTraits(traits);
   };
 
+  const handleCopySeed = () => {
+    navigator.clipboard.writeText(currentSeed);
+    toast({
+      title: 'Seed copied!',
+      description: 'Share this seed to recreate this exact piece.',
+    });
+  };
+
   useEffect(() => {
     if (Object.keys(selectedTraits).length > 0) {
       renderPreview();
@@ -141,13 +171,82 @@ export const PreviewTab = () => {
       {/* Canvas Preview */}
       <Card className="p-6 border-border bg-card">
         <h2 className="text-xl font-bold mb-4">Live Preview</h2>
-        <div className="aspect-square bg-muted rounded border-2 border-border flex items-center justify-center">
+        <div 
+          className="aspect-square bg-muted rounded border-2 border-border flex items-center justify-center relative group"
+          data-tour="preview-canvas"
+          onMouseEnter={() => setShowMetadata(true)}
+          onMouseLeave={() => setShowMetadata(false)}
+        >
           <canvas
             ref={canvasRef}
             width={512}
             height={512}
-            className="w-full h-full object-contain"
+            className={`w-full h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-50' : 'opacity-100'}`}
           />
+          
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+              <p className="text-sm text-muted-foreground animate-pulse">{renderProgress}</p>
+            </div>
+          )}
+
+          {/* Metadata Overlay */}
+          {showMetadata && !isLoading && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 to-transparent p-4 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Seed</p>
+                  <p className="text-sm font-mono text-foreground">{currentSeed}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopySeed}
+                  className="gap-2"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Welcome Overlay */}
+          {showWelcome && (
+            <div className="absolute inset-0 bg-background/95 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in">
+              <div className="max-w-md text-center space-y-4">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowWelcome(false)}
+                  className="absolute top-4 right-4"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+                
+                <Sparkles className="w-12 h-12 mx-auto text-primary animate-pulse" />
+                <h3 className="text-2xl font-bold gradient-text">Welcome to Your Generative Art Studio!</h3>
+                
+                <div className="text-left space-y-2 text-sm text-muted-foreground">
+                  <p>Your first piece has been generated using:</p>
+                  <ul className="space-y-1 ml-4">
+                    <li>→ WebGL shaders for backgrounds</li>
+                    <li>→ P5.js sketches for patterns</li>
+                    <li>→ Procedural audio via Strudel</li>
+                  </ul>
+                </div>
+                
+                <Button
+                  onClick={() => setShowWelcome(false)}
+                  className="w-full gradient-primary"
+                >
+                  Let's Create!
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-2">
@@ -168,9 +267,19 @@ export const PreviewTab = () => {
             </Button>
           </div>
 
-          <Button onClick={handleRandomize} className="w-full gradient-primary">
+          <Button 
+            onClick={handleRandomize} 
+            className="w-full gradient-primary relative group"
+            data-tour="randomize-button"
+          >
             <Shuffle className="w-4 h-4 mr-2" />
             Randomize
+            {!localStorage.getItem('preview-welcome-seen') && (
+              <span className="absolute -top-2 -right-2 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+            )}
           </Button>
         </div>
       </Card>

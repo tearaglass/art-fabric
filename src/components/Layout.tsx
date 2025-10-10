@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes, Music, Image, Radio, Zap, Settings } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
+import { QuickStartTour } from './QuickStartTour';
 import { AssetsTab } from './tabs/AssetsTab';
 import { RulesTab } from './tabs/RulesTab';
 import { DistributionTab } from './tabs/DistributionTab';
@@ -27,9 +28,10 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen flex flex-col w-full">
       <ProjectHeader />
+      <QuickStartTour />
       
       <main className="flex-1 container mx-auto px-6 py-6">
-        <Tabs defaultValue="assets" className="w-full">
+        <Tabs defaultValue="preview" className="w-full">
           <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-12' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <FileImage className="w-4 h-4 mr-2" />
@@ -49,7 +51,7 @@ export const Layout = ({ children }: LayoutProps) => {
             </TabsTrigger>
             {powerUserMode && (
               <>
-                <TabsTrigger value="shaderlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                <TabsTrigger value="shaderlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="shader-lab">
                   <Sparkles className="w-4 h-4 mr-2" />
                   Shader Lab
                 </TabsTrigger>
@@ -57,7 +59,7 @@ export const Layout = ({ children }: LayoutProps) => {
                   <Shapes className="w-4 h-4 mr-2" />
                   p5 Lab
                 </TabsTrigger>
-                <TabsTrigger value="strudellab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                <TabsTrigger value="strudellab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="strudel-lab">
                   <Music className="w-4 h-4 mr-2" />
                   Strudel
                 </TabsTrigger>
@@ -79,7 +81,7 @@ export const Layout = ({ children }: LayoutProps) => {
               <Play className="w-4 h-4 mr-2" />
               Preview
             </TabsTrigger>
-            <TabsTrigger value="export" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="export" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="export-tab">
               <Download className="w-4 h-4 mr-2" />
               Export
             </TabsTrigger>

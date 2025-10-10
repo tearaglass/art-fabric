@@ -4,9 +4,10 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Download, Upload, Trash2, Zap } from 'lucide-react';
+import { Settings, Download, Upload, Trash2, Zap, Sparkles } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useToast } from '@/hooks/use-toast';
+import { GALLERY_TEMPLATES } from '@/lib/templates/galleryTemplates';
 
 export const SettingsTab = () => {
   const { 
@@ -76,6 +77,15 @@ export const SettingsTab = () => {
     }
   };
 
+  const handleLoadTemplate = (templateData: any) => {
+    const json = JSON.stringify(templateData);
+    loadProject(json);
+    toast({
+      title: 'Template loaded!',
+      description: 'Example project ready to customize',
+    });
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Card className="p-6 border-border bg-card">
@@ -117,6 +127,39 @@ export const SettingsTab = () => {
               onCheckedChange={setPowerUserMode}
             />
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 border-border bg-card">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-bold">Example Projects</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Load pre-configured templates to get started quickly
+        </p>
+
+        <div className="grid grid-cols-1 gap-3">
+          {GALLERY_TEMPLATES.map((template) => (
+            <Card key={template.id} className="p-4 border-border bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">{template.thumbnail}</span>
+                    <h3 className="font-semibold text-foreground">{template.name}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{template.description}</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleLoadTemplate(template.projectData)}
+                  className="gradient-primary shrink-0"
+                >
+                  Load
+                </Button>
+              </div>
+            </Card>
+          ))}
         </div>
       </Card>
 
