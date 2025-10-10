@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Track } from '@/lib/strudel/DAWEngine';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AIPatternGeneratorProps {
   onGenerate: (tracks: Track[]) => void;
@@ -29,6 +28,9 @@ export function AIPatternGenerator({ onGenerate, currentBpm }: AIPatternGenerato
 
     setGenerating(true);
     try {
+      // Dynamically import supabase to avoid initialization errors
+      const { supabase } = await import('@/integrations/supabase/client');
+      
       const { data, error } = await supabase.functions.invoke('generate-patterns', {
         body: {
           prompt,
