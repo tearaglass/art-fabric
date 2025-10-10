@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileImage, GitBranch, BarChart3, Wand2, Play, Download } from 'lucide-react';
+import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
 import { AssetsTab } from './tabs/AssetsTab';
 import { RulesTab } from './tabs/RulesTab';
@@ -8,19 +8,23 @@ import { DistributionTab } from './tabs/DistributionTab';
 import { FXBuilderTab } from './tabs/FXBuilderTab';
 import { PreviewTab } from './tabs/PreviewTab';
 import { ExportTab } from './tabs/ExportTab';
+import { ShaderLabTab } from './tabs/ShaderLabTab';
+import { useProjectStore } from '@/store/useProjectStore';
 
 interface LayoutProps {
   children?: ReactNode;
 }
 
 export const Layout = ({ children }: LayoutProps) => {
+  const { powerUserMode } = useProjectStore();
+
   return (
     <div className="min-h-screen flex flex-col w-full">
       <ProjectHeader />
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="assets" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-6 bg-card border border-border">
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-7' : 'grid-cols-6'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <FileImage className="w-4 h-4 mr-2" />
               Assets
@@ -37,6 +41,12 @@ export const Layout = ({ children }: LayoutProps) => {
               <Wand2 className="w-4 h-4 mr-2" />
               FX Builder
             </TabsTrigger>
+            {powerUserMode && (
+              <TabsTrigger value="shaderlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Shader Lab
+              </TabsTrigger>
+            )}
             <TabsTrigger value="preview" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <Play className="w-4 h-4 mr-2" />
               Preview
@@ -62,6 +72,12 @@ export const Layout = ({ children }: LayoutProps) => {
           <TabsContent value="fx" className="mt-0">
             <FXBuilderTab />
           </TabsContent>
+
+          {powerUserMode && (
+            <TabsContent value="shaderlab" className="mt-0">
+              <ShaderLabTab />
+            </TabsContent>
+          )}
 
           <TabsContent value="preview" className="mt-0">
             <PreviewTab />

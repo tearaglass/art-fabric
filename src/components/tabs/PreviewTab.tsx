@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Shuffle, RefreshCw } from 'lucide-react';
 import seedrandom from 'seedrandom';
+import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 
 export const PreviewTab = () => {
   const { traitClasses, seed, fxConfigs } = useProjectStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef(new TraitRenderer());
   const [currentSeed, setCurrentSeed] = useState(seed);
   const [selectedTraits, setSelectedTraits] = useState<Record<string, string>>({});
 
@@ -48,19 +50,19 @@ export const PreviewTab = () => {
     // Sort by z-index
     const sortedClasses = [...traitClasses].sort((a, b) => a.zIndex - b.zIndex);
 
-    // Render each selected trait
+    // Render each selected trait using TraitRenderer
     for (const traitClass of sortedClasses) {
       const selectedTraitId = selectedTraits[traitClass.id];
       const trait = traitClass.traits.find((t) => t.id === selectedTraitId);
 
       if (trait) {
-        const img = new Image();
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.src = trait.imageSrc;
-        });
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const renderedCanvas = await rendererRef.current.renderTrait(
+          trait,
+          canvas.width,
+          canvas.height,
+          currentSeed
+        );
+        ctx.drawImage(renderedCanvas, 0, 0);
       }
     }
 

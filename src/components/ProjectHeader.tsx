@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, FolderOpen, FileDown, Plus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Save, FolderOpen, Plus, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const ProjectHeader = () => {
-  const { projectName, setProjectName, saveProject, loadProject, resetProject } = useProjectStore();
+  const { projectName, setProjectName, saveProject, loadProject, resetProject, powerUserMode, setPowerUserMode } = useProjectStore();
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
@@ -82,19 +84,31 @@ export const ProjectHeader = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleNew}>
-            <Plus className="w-4 h-4 mr-2" />
-            New
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleLoad}>
-            <FolderOpen className="w-4 h-4 mr-2" />
-            Load
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSave}>
-            <Save className="w-4 h-4 mr-2" />
-            Save
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1 rounded border border-border bg-muted/30">
+            <Zap className={`w-4 h-4 ${powerUserMode ? 'text-primary' : 'text-muted-foreground'}`} />
+            <Label htmlFor="power-mode" className="text-xs cursor-pointer">Power Mode</Label>
+            <Switch
+              id="power-mode"
+              checked={powerUserMode}
+              onCheckedChange={setPowerUserMode}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleNew}>
+              <Plus className="w-4 h-4 mr-2" />
+              New
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLoad}>
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Load
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" />
+              Save
+            </Button>
+          </div>
         </div>
       </div>
     </header>

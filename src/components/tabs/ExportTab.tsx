@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,12 @@ import { Download, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import seedrandom from 'seedrandom';
+import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 
 export const ExportTab = () => {
   const { projectName, traitClasses, seed, collectionSize, setCollectionSize, fxConfigs } = useProjectStore();
   const { toast } = useToast();
+  const rendererRef = useRef(new TraitRenderer());
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -40,7 +42,7 @@ export const ExportTab = () => {
       }
     });
 
-    // Render to canvas
+    // Render to canvas using TraitRenderer
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
@@ -52,13 +54,13 @@ export const ExportTab = () => {
     for (const traitClass of sortedClasses) {
       const trait = traits[traitClass.id];
       if (trait) {
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = trait.imageSrc;
-        });
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const renderedCanvas = await rendererRef.current.renderTrait(
+          trait,
+          canvas.width,
+          canvas.height,
+          tokenSeed
+        );
+        ctx.drawImage(renderedCanvas, 0, 0);
       }
     }
 

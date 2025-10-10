@@ -4,7 +4,7 @@ import seedrandom from 'seedrandom';
 export interface Trait {
   id: string;
   name: string;
-  imageSrc: string;
+  imageSrc: string; // Can be URL or "webgl:presetId:params" for shader traits
   weight: number;
   className: string;
 }
@@ -38,6 +38,7 @@ export interface ProjectState {
   fxConfigs: FXConfig[];
   seed: string;
   collectionSize: number;
+  powerUserMode: boolean;
   
   // Actions
   setProjectName: (name: string) => void;
@@ -54,6 +55,7 @@ export interface ProjectState {
   removeFXConfig: (id: string) => void;
   setSeed: (seed: string) => void;
   setCollectionSize: (size: number) => void;
+  setPowerUserMode: (enabled: boolean) => void;
   saveProject: () => string;
   loadProject: (json: string) => void;
   resetProject: () => void;
@@ -66,6 +68,7 @@ const initialState = {
   fxConfigs: [],
   seed: 'laney-' + Date.now(),
   collectionSize: 100,
+  powerUserMode: false,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -150,6 +153,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setSeed: (seed) => set({ seed }),
 
   setCollectionSize: (size) => set({ collectionSize: size }),
+
+  setPowerUserMode: (enabled) => set({ powerUserMode: enabled }),
 
   saveProject: () => {
     const state = get();
