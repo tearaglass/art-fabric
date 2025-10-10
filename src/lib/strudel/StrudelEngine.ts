@@ -1,5 +1,5 @@
-import { repl, controls } from '@strudel/core';
-import { initAudioOnFirstClick, getAudioContext, samples } from '@strudel/webaudio';
+import { repl, Pattern } from '@strudel/core';
+import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
 
@@ -13,7 +13,7 @@ export class StrudelEngine {
   private scheduler: any = null;
   private audioContext: AudioContext | null = null;
   private isInitialized = false;
-  private currentPattern: string = '';
+  private currentPattern: Pattern | null = null;
 
   private constructor() {}
 
@@ -34,36 +34,20 @@ export class StrudelEngine {
       await initAudioOnFirstClick();
       this.audioContext = getAudioContext();
       
+      // Create scheduler with proper configuration
+      const replInstance = repl({
+        defaultOutput: webaudioOutput,
+        getTime: () => this.audioContext?.currentTime || 0,
+      });
+
+      this.scheduler = replInstance.scheduler;
+      
       console.log('[Strudel] Audio context initialized:', this.audioContext?.state);
+      console.log('[Strudel] Scheduler created');
       this.isInitialized = true;
     } catch (error) {
       console.error('[Strudel] Initialization error:', error);
       throw error;
-    }
-  }
-
-  async loadSamples(sampleUrls?: Record<string, string>) {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    try {
-      console.log('[Strudel] Loading samples...');
-      
-      // Load default samples if no custom URLs provided
-      if (!sampleUrls) {
-        // Strudel comes with default samples loaded
-        console.log('[Strudel] Using default sample library');
-      } else {
-        // Load custom samples
-        await Promise.all(
-          Object.entries(sampleUrls).map(([name, url]) =>
-            samples(url, { name })
-          )
-        );
-      }
-    } catch (error) {
-      console.error('[Strudel] Sample loading error:', error);
     }
   }
 
@@ -74,21 +58,32 @@ export class StrudelEngine {
 
     try {
       console.log('[Strudel] Evaluating pattern:', code);
-      this.currentPattern = code;
 
-      // Evaluate the pattern using Strudel's REPL
-      const result = await repl({
-        code,
-        autodraw: false, // We'll handle drawing separately
-      });
+      // Evaluate the code to get a pattern
+      // Using Function constructor to evaluate the pattern code safely
+      const evaluateCode = new Function(
+        's', 'note', 'sound', 'stack', 'cat', 'seq', 'fastcat', 'slowcat',
+        `return ${code}`
+      );
 
-      // Start the scheduler if not already running
-      if (!this.scheduler) {
-        this.scheduler = controls.start();
+      // Import pattern functions from @strudel/core
+      const { s, note, sound, stack, cat, seq, fastcat, slowcat } = await import('@strudel/core');
+      
+      const pattern = evaluateCode(s, note, sound, stack, cat, seq, fastcat, slowcat);
+      
+      if (!pattern) {
+        throw new Error('Pattern evaluation returned null');
+      }
+
+      this.currentPattern = pattern;
+
+      // Set pattern on scheduler
+      if (this.scheduler) {
+        this.scheduler.setPattern(pattern, true); // true = evaluate immediately
+        console.log('[Strudel] Pattern set on scheduler');
       }
 
       console.log('[Strudel] Pattern evaluated successfully');
-      return result;
     } catch (error) {
       console.error('[Strudel] Pattern evaluation error:', error);
       throw new Error(`Pattern error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -107,8 +102,12 @@ export class StrudelEngine {
         await this.audioContext.resume();
       }
 
-      controls.start();
-      console.log('[Strudel] Playback started');
+      if (this.scheduler) {
+        this.scheduler.start();
+        console.log('[Strudel] Playback started');
+      } else {
+        throw new Error('Scheduler not initialized');
+      }
     } catch (error) {
       console.error('[Strudel] Start error:', error);
       throw error;
@@ -118,7 +117,9 @@ export class StrudelEngine {
   pause() {
     try {
       console.log('[Strudel] Pausing playback...');
-      controls.pause();
+      if (this.scheduler) {
+        this.scheduler.pause();
+      }
     } catch (error) {
       console.error('[Strudel] Pause error:', error);
     }
@@ -127,8 +128,9 @@ export class StrudelEngine {
   stop() {
     try {
       console.log('[Strudel] Stopping playback...');
-      controls.stop();
-      this.scheduler = null;
+      if (this.scheduler) {
+        this.scheduler.stop();
+      }
     } catch (error) {
       console.error('[Strudel] Stop error:', error);
     }
@@ -137,13 +139,16 @@ export class StrudelEngine {
   setBPM(bpm: number) {
     try {
       console.log('[Strudel] Setting BPM to:', bpm);
-      controls.setcps(bpm / 60 / 4); // Convert BPM to cycles per second
+      const cps = bpm / 60 / 4; // Convert BPM to cycles per second
+      if (this.scheduler) {
+        this.scheduler.setCPS(cps);
+      }
     } catch (error) {
       console.error('[Strudel] Set BPM error:', error);
     }
   }
 
-  getCurrentPattern(): string {
+  getCurrentPattern(): Pattern | null {
     return this.currentPattern;
   }
 
@@ -153,7 +158,7 @@ export class StrudelEngine {
 
   isPlaying(): boolean {
     try {
-      return controls.started;
+      return this.scheduler?.started || false;
     } catch {
       return false;
     }
@@ -163,6 +168,7 @@ export class StrudelEngine {
     try {
       this.stop();
       this.scheduler = null;
+      this.currentPattern = null;
       this.isInitialized = false;
     } catch (error) {
       console.error('[Strudel] Destroy error:', error);

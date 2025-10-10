@@ -48,38 +48,50 @@ export class TraitRenderer {
   }
 
   private parseTraitSource(trait: Trait): TraitSource {
-    // Check if trait has webgl data in imageSrc (format: "webgl:presetId:params")
-    if (trait.imageSrc.startsWith('webgl:')) {
-      const [, presetId, paramsJson] = trait.imageSrc.split(':');
-      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
-      return { type: 'webgl', presetId, params };
-    }
-    
-    // Check for p5.js source (format: "p5:presetId:params")
-    if (trait.imageSrc.startsWith('p5:')) {
-      const [, presetId, paramsJson] = trait.imageSrc.split(':');
-      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
-      return { type: 'p5', presetId, params };
-    }
-    
-    // Check for Strudel source (format: "strudel:presetId:params")
-    if (trait.imageSrc.startsWith('strudel:')) {
-      const [, presetId, paramsJson] = trait.imageSrc.split(':');
-      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
-      return { type: 'strudel', presetId, params };
-    }
-    
-    // Check for SD source (format: "sd:graphId:seed:params")
-    if (trait.imageSrc.startsWith('sd:')) {
-      const [, graphId, seed, paramsJson] = trait.imageSrc.split(':');
-      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
-      return { 
-        type: 'sd', 
-        graphId, 
-        seed: parseInt(seed), 
-        prompt: params.customPrompt || '',
-        params 
-      };
+    try {
+      // Check if trait has webgl data in imageSrc (format: "webgl:presetId:params")
+      if (trait.imageSrc.startsWith('webgl:')) {
+        const parts = trait.imageSrc.split(':');
+        const presetId = parts[1];
+        const paramsJson = parts.slice(2).join(':'); // Rejoin in case there are colons in JSON
+        const params = paramsJson ? JSON.parse(paramsJson) : {};
+        return { type: 'webgl', presetId, params };
+      }
+      
+      // Check for p5.js source (format: "p5:presetId:params")
+      if (trait.imageSrc.startsWith('p5:')) {
+        const parts = trait.imageSrc.split(':');
+        const presetId = parts[1];
+        const paramsJson = parts.slice(2).join(':');
+        const params = paramsJson ? JSON.parse(paramsJson) : {};
+        return { type: 'p5', presetId, params };
+      }
+      
+      // Check for Strudel source (format: "strudel:presetId:params")
+      if (trait.imageSrc.startsWith('strudel:')) {
+        const parts = trait.imageSrc.split(':');
+        const presetId = parts[1];
+        const paramsJson = parts.slice(2).join(':');
+        const params = paramsJson ? JSON.parse(paramsJson) : {};
+        return { type: 'strudel', presetId, params };
+      }
+      
+      // Check for SD source (format: "sd:{json}")
+      if (trait.imageSrc.startsWith('sd:')) {
+        const jsonStr = trait.imageSrc.substring(3); // Everything after 'sd:'
+        const config = JSON.parse(jsonStr);
+        return { 
+          type: 'sd', 
+          graphId: config.graphId || 'portrait',
+          seed: config.seed || Math.floor(Math.random() * 1000000),
+          prompt: config.prompt || '',
+          params: config.params || {}
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing trait source:', trait.imageSrc, error);
+      // Return a default image type if parsing fails
+      return { type: 'image', imageSrc: '' };
     }
     
     return { type: 'image', imageSrc: trait.imageSrc };

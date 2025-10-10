@@ -43,7 +43,6 @@ export function StrudelLabTab() {
   const handleInitialize = async () => {
     try {
       await strudelEngine.initialize();
-      await strudelEngine.loadSamples();
       audioContextRef.current = strudelEngine.getAudioContext();
       setIsInitialized(true);
       
