@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Sparkles, Plus, RefreshCw } from 'lucide-react';
+import { Sparkles, Plus, RefreshCw, Download } from 'lucide-react';
 import { SHADER_PRESETS, ShaderPreset } from '@/lib/shaders/presets';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
+import { ISFConverter } from '@/lib/shaders/ISFConverter';
 import { useToast } from '@/hooks/use-toast';
 
 export const ShaderLabTab = () => {
@@ -109,6 +110,45 @@ export const ShaderLabTab = () => {
     setTraitName('');
   };
 
+  const handleExportISF = async () => {
+    if (!selectedPreset) {
+      toast({
+        title: 'No preset selected',
+        description: 'Select a shader preset to export',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const blob = ISFConverter.exportAsFile(selectedPreset);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${selectedPreset.id}.fs`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'ISF Shader exported',
+      description: `${selectedPreset.name} exported for VDMX`,
+    });
+  };
+
+  const handleExportAllISF = async () => {
+    const blob = await ISFConverter.exportAllAsZip(SHADER_PRESETS);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'shaders-isf-pack.zip';
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'All shaders exported',
+      description: `${SHADER_PRESETS.length} ISF shaders ready for VDMX`,
+    });
+  };
+
   const renderUniformControl = (name: string, config: ShaderPreset['uniforms'][string]) => {
     const value = uniformValues[name] ?? config.default;
 
@@ -175,9 +215,20 @@ export const ShaderLabTab = () => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Preset Gallery */}
       <Card className="p-6 border-border bg-card">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <h2 className="text-xl font-bold">Shader Presets</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-bold">Shader Presets</h2>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportAllISF}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export All (VDMX)
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -212,14 +263,26 @@ export const ShaderLabTab = () => {
         <Card className="p-6 border-border bg-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Live Preview</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={renderPreview}
-              disabled={!selectedPreset}
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportISF}
+                disabled={!selectedPreset}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export ISF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={renderPreview}
+                disabled={!selectedPreset}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="aspect-square bg-muted rounded border-2 border-border flex items-center justify-center">

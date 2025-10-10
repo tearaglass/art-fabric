@@ -4,12 +4,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Package, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import seedrandom from 'seedrandom';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 import { RulesEngine } from '@/lib/rules/RulesEngine';
+import { VDMXExporter } from '@/lib/export/VDMXExporter';
+import { ISFConverter } from '@/lib/shaders/ISFConverter';
+import { SHADER_PRESETS } from '@/lib/shaders/presets';
 
 export const ExportTab = () => {
   const { projectName, traitClasses, rules, seed, collectionSize, setCollectionSize, fxConfigs } = useProjectStore();
@@ -18,6 +22,7 @@ export const ExportTab = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [validationErrors, setValidationErrors] = useState(0);
+  const [exportMode, setExportMode] = useState<'nft' | 'vdmx-clips' | 'vdmx-template' | 'isf-shaders'>('nft');
 
   const generateToken = async (edition: number, tokenSeed: string) => {
     const rng = seedrandom(tokenSeed);
@@ -205,6 +210,27 @@ export const ExportTab = () => {
 
         <div className="space-y-4">
           <div>
+            <label className="text-sm font-medium mb-2 block">Export Mode</label>
+            <Select value={exportMode} onValueChange={(v: any) => setExportMode(v)}>
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nft">NFT Collection (PNG + JSON)</SelectItem>
+                <SelectItem value="vdmx-clips">VDMX Clips (MOV per trait)</SelectItem>
+                <SelectItem value="vdmx-template">VDMX Template (.vdmx)</SelectItem>
+                <SelectItem value="isf-shaders">ISF Shader Pack (ZIP)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {exportMode === 'nft' && 'Standard NFT collection with images and metadata'}
+              {exportMode === 'vdmx-clips' && 'Video clips optimized for VDMX layers'}
+              {exportMode === 'vdmx-template' && 'Pre-configured VDMX project file'}
+              {exportMode === 'isf-shaders' && 'All shaders in ISF format for VDMX'}
+            </p>
+          </div>
+
+          <div>
             <label className="text-sm font-medium mb-2 block">Collection Size</label>
             <Input
               type="number"
@@ -243,9 +269,36 @@ export const ExportTab = () => {
               <div className="flex-1">
                 <div className="font-medium">What's included:</div>
                 <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                  <li>• /images/ - PNG files for all editions</li>
-                  <li>• /metadata/ - ERC-721 JSON for each token</li>
-                  <li>• manifest.json - Collection audit & provenance</li>
+                  {exportMode === 'nft' && (
+                    <>
+                      <li>• /images/ - PNG files for all editions</li>
+                      <li>• /metadata/ - ERC-721 JSON for each token</li>
+                      <li>• manifest.json - Collection audit & provenance</li>
+                    </>
+                  )}
+                  {exportMode === 'vdmx-clips' && (
+                    <>
+                      <li>• /clips/ - 5-second looping MOV files per trait</li>
+                      <li>• Organized by trait class folders</li>
+                      <li>• H.264 codec, 1920x1080, 60fps</li>
+                    </>
+                  )}
+                  {exportMode === 'vdmx-template' && (
+                    <>
+                      <li>• Pre-configured .vdmx project file</li>
+                      <li>• Layers for each trait class</li>
+                      <li>• OSC mappings for live control</li>
+                      <li>• Recommended blend modes & settings</li>
+                    </>
+                  )}
+                  {exportMode === 'isf-shaders' && (
+                    <>
+                      <li>• {SHADER_PRESETS.length} ISF shader files (.fs)</li>
+                      <li>• Compatible with VDMX, CoGe, MadMapper</li>
+                      <li>• Installation instructions included</li>
+                      <li>• OSC control schema documentation</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>
@@ -261,12 +314,39 @@ export const ExportTab = () => {
           )}
 
           <Button
-            onClick={handleExport}
+            onClick={() => {
+              if (exportMode === 'vdmx-template') {
+                VDMXExporter.downloadTemplate(projectName, traitClasses, SHADER_PRESETS);
+                toast({
+                  title: 'VDMX Template exported',
+                  description: `${projectName}.vdmx ready for import`,
+                });
+              } else if (exportMode === 'isf-shaders') {
+                ISFConverter.exportAllAsZip(SHADER_PRESETS).then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'shaders-isf-pack.zip';
+                  link.click();
+                  URL.revokeObjectURL(url);
+                  toast({
+                    title: 'ISF Shaders exported',
+                    description: `${SHADER_PRESETS.length} shaders ready for VDMX`,
+                  });
+                });
+              } else {
+                handleExport();
+              }
+            }}
             disabled={isExporting || traitClasses.length === 0}
             className="w-full gradient-primary text-lg py-6"
           >
             <Download className="w-5 h-5 mr-2" />
-            {isExporting ? 'Exporting...' : 'Export Collection'}
+            {isExporting ? 'Exporting...' : 
+              exportMode === 'nft' ? 'Export Collection' :
+              exportMode === 'vdmx-clips' ? 'Export VDMX Clips' :
+              exportMode === 'vdmx-template' ? 'Export VDMX Template' :
+              'Export ISF Shaders'}
           </Button>
 
           {traitClasses.length === 0 && (
