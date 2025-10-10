@@ -5,7 +5,7 @@ interface CacheEntry {
   hash: string;
   timestamp: number;
   size: number;
-  type: 'webgl' | 'p5' | 'sd' | 'image';
+  type: 'webgl' | 'p5' | 'sd' | 'image' | 'strudel';
   metadata?: Record<string, any>;
 }
 
@@ -61,6 +61,7 @@ class RenderCache {
       p5: 'p5/cached' as const,
       sd: 'sd/cached' as const,
       image: 'webgl/cached' as const,
+      strudel: 'strudel/cached' as const,
     };
 
     eventBus.emit(eventMap[type], { 

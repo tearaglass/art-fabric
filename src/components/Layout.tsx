@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes } from 'lucide-react';
+import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes, Music } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
 import { AssetsTab } from './tabs/AssetsTab';
 import { RulesTab } from './tabs/RulesTab';
@@ -10,6 +10,7 @@ import { PreviewTab } from './tabs/PreviewTab';
 import { ExportTab } from './tabs/ExportTab';
 import { ShaderLabTab } from './tabs/ShaderLabTab';
 import { P5LabTab } from './tabs/P5LabTab';
+import { StrudelLabTab } from './tabs/StrudelLabTab';
 import { useProjectStore } from '@/store/useProjectStore';
 
 interface LayoutProps {
@@ -25,7 +26,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="assets" className="w-full">
-          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-8' : 'grid-cols-6'} mb-6 bg-card border border-border`}>
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-9' : 'grid-cols-6'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <FileImage className="w-4 h-4 mr-2" />
               Assets
@@ -51,6 +52,10 @@ export const Layout = ({ children }: LayoutProps) => {
                 <TabsTrigger value="p5lab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
                   <Shapes className="w-4 h-4 mr-2" />
                   p5 Lab
+                </TabsTrigger>
+                <TabsTrigger value="strudellab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                  <Music className="w-4 h-4 mr-2" />
+                  Strudel
                 </TabsTrigger>
               </>
             )}
@@ -87,6 +92,9 @@ export const Layout = ({ children }: LayoutProps) => {
               </TabsContent>
               <TabsContent value="p5lab" className="mt-0">
                 <P5LabTab />
+              </TabsContent>
+              <TabsContent value="strudellab" className="mt-0">
+                <StrudelLabTab />
               </TabsContent>
             </>
           )}
