@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Play, Download, Copy, Pause, Volume2 } from 'lucide-react';
+import { Play, Download, Copy, Pause, Volume2, Plus } from 'lucide-react';
 import { STRUDEL_PRESETS, StrudelRenderer } from '@/lib/strudel/StrudelRenderer';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useProjectStore } from '@/store/useProjectStore';
 
 export function StrudelLabTab() {
   const [selectedPresetId, setSelectedPresetId] = useState(STRUDEL_PRESETS[0].id);
@@ -20,8 +21,12 @@ export function StrudelLabTab() {
   const [playing, setPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<any>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [traitName, setTraitName] = useState('');
+  const [traitWeight, setTraitWeight] = useState(100);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+  const { traitClasses, addTrait } = useProjectStore();
 
   const selectedPreset = STRUDEL_PRESETS.find(p => p.id === selectedPresetId) || STRUDEL_PRESETS[0];
 
@@ -100,6 +105,45 @@ export function StrudelLabTab() {
       title: 'Source copied',
       description: 'Paste into trait imageSrc field',
     });
+  };
+
+  const handleAddTrait = () => {
+    if (!selectedClassId) {
+      toast({
+        title: 'Select a class',
+        description: 'Please choose a trait class first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!traitName.trim()) {
+      toast({
+        title: 'Enter trait name',
+        description: 'Please provide a name for this trait',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const traitClass = traitClasses.find(tc => tc.id === selectedClassId);
+    const sourceParams = { pattern, tempo, bars, kitId };
+    const source = `strudel:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
+
+    addTrait(selectedClassId, {
+      id: `strudel-${Date.now()}-${Math.random()}`,
+      name: traitName,
+      imageSrc: source,
+      weight: traitWeight,
+      className: traitClass?.name || '',
+    });
+
+    toast({
+      title: 'Trait added',
+      description: `"${traitName}" added to ${traitClass?.name}`,
+    });
+
+    setTraitName('');
   };
 
   return (
@@ -285,6 +329,56 @@ export function StrudelLabTab() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Add as Trait</CardTitle>
+            <CardDescription>
+              Add this audio pattern to your collection
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Trait Class</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a class..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {traitClasses.map(tc => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Trait Name</Label>
+              <Input
+                value={traitName}
+                onChange={(e) => setTraitName(e.target.value)}
+                placeholder={`${selectedPreset.name} #1`}
+              />
+            </div>
+
+            <div>
+              <Label>Weight</Label>
+              <Input
+                type="number"
+                value={traitWeight}
+                onChange={(e) => setTraitWeight(parseInt(e.target.value) || 100)}
+                min={1}
+              />
+            </div>
+
+            <Button onClick={handleAddTrait} disabled={!audioUrl} className="w-full">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Trait
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

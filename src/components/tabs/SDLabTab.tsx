@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Wand2, Download, Copy, Loader2 } from 'lucide-react';
+import { Wand2, Download, Copy, Loader2, Plus } from 'lucide-react';
 import { SD_GRAPH_PRESETS, SDAdapter } from '@/lib/sd/SDAdapter';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useProjectStore } from '@/store/useProjectStore';
 
 export function SDLabTab() {
   const [selectedGraphId, setSelectedGraphId] = useState(SD_GRAPH_PRESETS[0].id);
@@ -17,8 +18,12 @@ export function SDLabTab() {
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<any>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [traitName, setTraitName] = useState('');
+  const [traitWeight, setTraitWeight] = useState(100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const { traitClasses, addTrait } = useProjectStore();
 
   const selectedGraph = SD_GRAPH_PRESETS.find(g => g.id === selectedGraphId) || SD_GRAPH_PRESETS[0];
 
@@ -95,6 +100,45 @@ export function SDLabTab() {
 
   const handleRandomSeed = () => {
     setSeed(Math.floor(Math.random() * 999999));
+  };
+
+  const handleAddTrait = () => {
+    if (!selectedClassId) {
+      toast({
+        title: 'Select a class',
+        description: 'Please choose a trait class first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!traitName.trim()) {
+      toast({
+        title: 'Enter trait name',
+        description: 'Please provide a name for this trait',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const traitClass = traitClasses.find(tc => tc.id === selectedClassId);
+    const sourceParams = { customPrompt, seed };
+    const source = `sd:${selectedGraph.id}:${seed}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
+
+    addTrait(selectedClassId, {
+      id: `sd-${Date.now()}-${Math.random()}`,
+      name: traitName,
+      imageSrc: source,
+      weight: traitWeight,
+      className: traitClass?.name || '',
+    });
+
+    toast({
+      title: 'Trait added',
+      description: `"${traitName}" added to ${traitClass?.name}`,
+    });
+
+    setTraitName('');
   };
 
   return (
@@ -263,6 +307,56 @@ export function SDLabTab() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Add as Trait</CardTitle>
+            <CardDescription>
+              Add this generated image to your collection
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Trait Class</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a class..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {traitClasses.map(tc => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Trait Name</Label>
+              <Input
+                value={traitName}
+                onChange={(e) => setTraitName(e.target.value)}
+                placeholder={`${selectedGraph.name} #1`}
+              />
+            </div>
+
+            <div>
+              <Label>Weight</Label>
+              <Input
+                type="number"
+                value={traitWeight}
+                onChange={(e) => setTraitWeight(parseInt(e.target.value) || 100)}
+                min={1}
+              />
+            </div>
+
+            <Button onClick={handleAddTrait} disabled={!generatedImage} className="w-full">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Trait
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

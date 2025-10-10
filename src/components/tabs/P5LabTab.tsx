@@ -5,17 +5,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Play, Download, Copy } from 'lucide-react';
+import { Play, Download, Copy, Plus } from 'lucide-react';
 import { P5_PRESETS, P5Renderer } from '@/lib/p5/P5Renderer';
 import { useToast } from '@/hooks/use-toast';
+import { useProjectStore } from '@/store/useProjectStore';
+import { Separator } from '@/components/ui/separator';
 
 export function P5LabTab() {
   const [selectedPresetId, setSelectedPresetId] = useState(P5_PRESETS[0].id);
   const [params, setParams] = useState<Record<string, any>>({});
   const [rendering, setRendering] = useState(false);
   const [renderedImage, setRenderedImage] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [traitName, setTraitName] = useState('');
+  const [traitWeight, setTraitWeight] = useState(100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const { traitClasses, addTrait } = useProjectStore();
 
   const selectedPreset = P5_PRESETS.find(p => p.id === selectedPresetId) || P5_PRESETS[0];
 
@@ -77,6 +83,44 @@ export function P5LabTab() {
       title: 'Source copied',
       description: 'Paste into trait imageSrc field',
     });
+  };
+
+  const handleAddTrait = () => {
+    if (!selectedClassId) {
+      toast({
+        title: 'Select a class',
+        description: 'Please choose a trait class first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!traitName.trim()) {
+      toast({
+        title: 'Enter trait name',
+        description: 'Please provide a name for this trait',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const traitClass = traitClasses.find(tc => tc.id === selectedClassId);
+    const source = `p5:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(params))}`;
+
+    addTrait(selectedClassId, {
+      id: `p5-${Date.now()}-${Math.random()}`,
+      name: traitName,
+      imageSrc: source,
+      weight: traitWeight,
+      className: traitClass?.name || '',
+    });
+
+    toast({
+      title: 'Trait added',
+      description: `"${traitName}" added to ${traitClass?.name}`,
+    });
+
+    setTraitName('');
   };
 
   return (
@@ -152,6 +196,56 @@ export function P5LabTab() {
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Add as Trait</CardTitle>
+            <CardDescription>
+              Add this p5.js sketch to your collection
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Trait Class</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a class..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {traitClasses.map(tc => (
+                    <SelectItem key={tc.id} value={tc.id}>
+                      {tc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Trait Name</Label>
+              <Input
+                value={traitName}
+                onChange={(e) => setTraitName(e.target.value)}
+                placeholder={`${selectedPreset.name} #1`}
+              />
+            </div>
+
+            <div>
+              <Label>Weight</Label>
+              <Input
+                type="number"
+                value={traitWeight}
+                onChange={(e) => setTraitWeight(parseInt(e.target.value) || 100)}
+                min={1}
+              />
+            </div>
+
+            <Button onClick={handleAddTrait} disabled={!renderedImage} className="w-full">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Trait
+            </Button>
           </CardContent>
         </Card>
       </div>
