@@ -140,8 +140,12 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Setting BPM to:', bpm);
       const cps = bpm / 60 / 4; // Convert BPM to cycles per second
-      if (this.scheduler) {
+      if (this.scheduler && typeof this.scheduler.setCPS === 'function') {
         this.scheduler.setCPS(cps);
+      } else if (this.scheduler && typeof this.scheduler.setTempo === 'function') {
+        this.scheduler.setTempo(bpm);
+      } else {
+        console.warn('[Strudel] Scheduler does not support tempo changes; ignoring');
       }
     } catch (error) {
       console.error('[Strudel] Set BPM error:', error);
