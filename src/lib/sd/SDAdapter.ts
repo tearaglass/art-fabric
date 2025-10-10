@@ -1,6 +1,5 @@
 import { renderCache } from '@/lib/cache/RenderCache';
 import { eventBus } from '@/lib/events/EventBus';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface SDGraphSpec {
   id: string;
@@ -102,6 +101,9 @@ export class SDAdapter {
     eventBus.emit('sd/started', { jobId: job.graph, timestamp: Date.now() });
 
     try {
+      // Lazy load Supabase client to avoid initialization errors
+      const { supabase } = await import('@/integrations/supabase/client');
+      
       // Call Lovable AI edge function for image generation
       const { data, error } = await supabase.functions.invoke('generate-image', {
         body: {
