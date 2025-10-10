@@ -4,7 +4,10 @@ import seedrandom from 'seedrandom';
 
 export type TraitSource = 
   | { type: 'image'; imageSrc: string }
-  | { type: 'webgl'; presetId: string; params: Record<string, number | number[]> };
+  | { type: 'webgl'; presetId: string; params: Record<string, number | number[]> }
+  | { type: 'p5'; presetId: string; params: Record<string, any> }
+  | { type: 'strudel'; presetId: string; params: Record<string, any> }
+  | { type: 'sd'; graphId: string; prompt: string; seed: number; params: Record<string, any> };
 
 export class TraitRenderer {
   private canvasCache = new Map<string, HTMLCanvasElement>();
@@ -32,6 +35,12 @@ export class TraitRenderer {
       await this.renderImageTrait(canvas, source.imageSrc);
     } else if (source.type === 'webgl') {
       await this.renderWebGLTrait(canvas, source.presetId, source.params, seed);
+    } else if (source.type === 'p5') {
+      await this.renderP5Trait(canvas, source.presetId, source.params, seed);
+    } else if (source.type === 'strudel') {
+      await this.renderStrudelTrait(canvas, source.presetId, source.params, seed);
+    } else if (source.type === 'sd') {
+      await this.renderSDTrait(canvas, source.graphId, source.prompt, source.seed, source.params);
     }
 
     this.canvasCache.set(cacheKey, canvas);
@@ -44,6 +53,33 @@ export class TraitRenderer {
       const [, presetId, paramsJson] = trait.imageSrc.split(':');
       const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
       return { type: 'webgl', presetId, params };
+    }
+    
+    // Check for p5.js source (format: "p5:presetId:params")
+    if (trait.imageSrc.startsWith('p5:')) {
+      const [, presetId, paramsJson] = trait.imageSrc.split(':');
+      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
+      return { type: 'p5', presetId, params };
+    }
+    
+    // Check for Strudel source (format: "strudel:presetId:params")
+    if (trait.imageSrc.startsWith('strudel:')) {
+      const [, presetId, paramsJson] = trait.imageSrc.split(':');
+      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
+      return { type: 'strudel', presetId, params };
+    }
+    
+    // Check for SD source (format: "sd:graphId:seed:params")
+    if (trait.imageSrc.startsWith('sd:')) {
+      const [, graphId, seed, paramsJson] = trait.imageSrc.split(':');
+      const params = paramsJson ? JSON.parse(decodeURIComponent(paramsJson)) : {};
+      return { 
+        type: 'sd', 
+        graphId, 
+        seed: parseInt(seed), 
+        prompt: params.customPrompt || '',
+        params 
+      };
     }
     
     return { type: 'image', imageSrc: trait.imageSrc };
@@ -190,6 +226,142 @@ export class TraitRenderer {
     }
 
     return shader;
+  }
+
+  private async renderP5Trait(
+    canvas: HTMLCanvasElement,
+    presetId: string,
+    params: Record<string, any>,
+    seed: string
+  ): Promise<void> {
+    const { P5_PRESETS, P5Renderer } = await import('@/lib/p5/P5Renderer');
+    
+    const preset = P5_PRESETS.find(p => p.id === presetId);
+    if (!preset) {
+      throw new Error(`P5 preset ${presetId} not found`);
+    }
+
+    const renderer = new P5Renderer();
+    const dataUrl = await renderer.render(preset, params);
+
+    // Convert base64 to image and draw to canvas
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  private async renderStrudelTrait(
+    canvas: HTMLCanvasElement,
+    presetId: string,
+    params: Record<string, any>,
+    seed: string
+  ): Promise<void> {
+    const { STRUDEL_PRESETS, StrudelRenderer } = await import('@/lib/strudel/StrudelRenderer');
+    
+    const preset = STRUDEL_PRESETS.find(p => p.id === presetId);
+    if (!preset) {
+      throw new Error(`Strudel preset ${presetId} not found`);
+    }
+
+    const renderer = new StrudelRenderer();
+    const result = await renderer.render({
+      pattern: params.pattern || preset.pattern,
+      tempo: params.tempo || preset.tempo,
+      bars: params.bars || preset.bars,
+      kitId: params.kitId || preset.kitId,
+      seed: parseInt(seed),
+    });
+
+    // Render waveform visualization
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Create audio context to decode waveform
+    const audioContext = new AudioContext();
+    const response = await fetch(result.audioUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    // Draw waveform
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const channelData = audioBuffer.getChannelData(0);
+    const step = Math.ceil(channelData.length / canvas.width);
+    const amp = canvas.height / 2;
+
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for (let i = 0; i < canvas.width; i++) {
+      const slice = channelData.slice(i * step, (i + 1) * step);
+      const values = Array.from(slice);
+      const min = Math.min(...values) as number;
+      const max = Math.max(...values) as number;
+      
+      if (i === 0) {
+        ctx.moveTo(i, amp + min * amp);
+      }
+      ctx.lineTo(i, amp + min * amp);
+      ctx.lineTo(i, amp + max * amp);
+    }
+
+    ctx.stroke();
+
+    // Add metadata overlay
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = '14px monospace';
+    ctx.fillText(`🔊 ${result.metadata.tempo} BPM | ${result.metadata.bars} bars`, 10, 20);
+  }
+
+  private async renderSDTrait(
+    canvas: HTMLCanvasElement,
+    graphId: string,
+    prompt: string,
+    seed: number,
+    params: Record<string, any>
+  ): Promise<void> {
+    const { SD_GRAPH_PRESETS, SDAdapter } = await import('@/lib/sd/SDAdapter');
+    
+    const graph = SD_GRAPH_PRESETS.find(g => g.id === graphId);
+    if (!graph) {
+      throw new Error(`SD graph ${graphId} not found`);
+    }
+
+    const adapter = new SDAdapter();
+    const fullPrompt = adapter.buildPrompt(graph, prompt, graph.params);
+
+    const result = await adapter.generate({
+      graph: graphId,
+      params: graph.params,
+      seed,
+      prompt: fullPrompt,
+      outSize: { w: canvas.width, h: canvas.height },
+    });
+
+    // Convert base64 to image and draw to canvas
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = result.b64;
+    });
   }
 
   clearCache() {

@@ -81,7 +81,11 @@ export function SDLabTab() {
   };
 
   const handleCopySource = () => {
-    const source = `sd:${selectedGraph.id}:${JSON.stringify({ seed, customPrompt })}`;
+    const sourceParams = {
+      customPrompt,
+      seed,
+    };
+    const source = `sd:${selectedGraph.id}:${seed}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
     navigator.clipboard.writeText(source);
     toast({
       title: 'Source copied',

@@ -71,7 +71,7 @@ export function P5LabTab() {
   };
 
   const handleCopySource = () => {
-    const source = `webgl:p5:${selectedPreset.id}:${JSON.stringify(params)}`;
+    const source = `p5:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(params))}`;
     navigator.clipboard.writeText(source);
     toast({
       title: 'Source copied',

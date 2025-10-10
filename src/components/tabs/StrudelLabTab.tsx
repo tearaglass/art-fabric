@@ -88,17 +88,17 @@ export function StrudelLabTab() {
   };
 
   const handleCopySource = () => {
-    const source = JSON.stringify({
-      source: 'strudel',
+    const sourceParams = {
       pattern,
       tempo,
       bars,
       kitId,
-    });
+    };
+    const source = `strudel:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
     navigator.clipboard.writeText(source);
     toast({
-      title: 'Pattern copied',
-      description: 'Use in trait metadata',
+      title: 'Source copied',
+      description: 'Paste into trait imageSrc field',
     });
   };
 
