@@ -1,25 +1,27 @@
 import { useState, useRef } from 'react';
-import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectStore, Trait } from '@/store/useProjectStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Download, Package } from 'lucide-react';
+import { Download, Package, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import seedrandom from 'seedrandom';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
+import { RulesEngine } from '@/lib/rules/RulesEngine';
 
 export const ExportTab = () => {
-  const { projectName, traitClasses, seed, collectionSize, setCollectionSize, fxConfigs } = useProjectStore();
+  const { projectName, traitClasses, rules, seed, collectionSize, setCollectionSize, fxConfigs } = useProjectStore();
   const { toast } = useToast();
   const rendererRef = useRef(new TraitRenderer());
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [validationErrors, setValidationErrors] = useState(0);
 
   const generateToken = async (edition: number, tokenSeed: string) => {
     const rng = seedrandom(tokenSeed);
-    const traits: Record<string, any> = {};
+    const selectedTraits: Trait[] = [];
     const attributes: any[] = [];
 
     // Generate traits for this token
@@ -32,13 +34,32 @@ export const ExportTab = () => {
       for (const trait of traitClass.traits) {
         random -= trait.weight;
         if (random <= 0) {
-          traits[traitClass.id] = trait;
+          selectedTraits.push(trait);
           attributes.push({
             trait_type: traitClass.name,
             value: trait.name,
           });
           break;
         }
+      }
+    });
+
+    // Validate and fix rules violations
+    const validation = RulesEngine.validate(selectedTraits, rules);
+    let finalTraits = selectedTraits;
+    
+    if (!validation.valid) {
+      // Auto-fix violations by removing conflicting traits
+      finalTraits = RulesEngine.autoFix(selectedTraits, rules);
+      setValidationErrors((prev) => prev + 1);
+    }
+
+    // Convert to map for rendering
+    const traits: Record<string, Trait> = {};
+    finalTraits.forEach((trait) => {
+      const traitClass = traitClasses.find((tc) => tc.name === trait.className);
+      if (traitClass) {
+        traits[traitClass.id] = trait;
       }
     });
 
@@ -101,6 +122,7 @@ export const ExportTab = () => {
 
     setIsExporting(true);
     setProgress(0);
+    setValidationErrors(0);
 
     try {
       const zip = new JSZip();
@@ -144,7 +166,9 @@ export const ExportTab = () => {
 
       toast({
         title: 'Export complete!',
-        description: `${collectionSize} NFTs generated successfully.`,
+        description: validationErrors > 0 
+          ? `${collectionSize} NFTs generated with ${validationErrors} rule violations auto-fixed.`
+          : `${collectionSize} NFTs generated successfully.`,
       });
     } catch (error) {
       console.error('Export failed:', error);
@@ -161,6 +185,21 @@ export const ExportTab = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {rules.length > 0 && (
+        <Card className="p-4 border-warning/50 bg-warning/10">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium text-warning">Rules Engine Active</div>
+              <p className="text-sm text-warning/80 mt-1">
+                {rules.length} rule{rules.length > 1 ? 's' : ''} will be enforced during generation. 
+                Violations will be auto-fixed by removing conflicting traits.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-6 border-border bg-card">
         <h2 className="text-xl font-bold mb-4">Export Configuration</h2>
 

@@ -63,11 +63,204 @@ export interface ProjectState {
 }
 
 const initialState = {
-  projectName: 'Untitled Collection',
-  traitClasses: [],
-  rules: [],
-  fxConfigs: [],
-  seed: 'laney-' + Date.now(),
+  projectName: 'Sample Generative Collection',
+  traitClasses: [
+    {
+      id: 'bg-class',
+      name: 'Background',
+      zIndex: 1,
+      traits: [
+        {
+          id: 'bg-1',
+          name: 'Perlin Noise',
+          imageSrc: 'webgl:perlin-noise:{"scale":2.5,"octaves":4,"speed":0.3}',
+          weight: 30,
+          className: 'Background'
+        },
+        {
+          id: 'bg-2',
+          name: 'Gradient Flow',
+          imageSrc: 'webgl:gradient:{"color1":[0.2,0.4,0.8],"color2":[0.8,0.2,0.4],"angle":45}',
+          weight: 25,
+          className: 'Background'
+        },
+        {
+          id: 'bg-3',
+          name: 'Circle Pack',
+          imageSrc: 'p5:circle-pack:{"count":50,"minRadius":5,"maxRadius":40,"colorMode":"vibrant"}',
+          weight: 25,
+          className: 'Background'
+        },
+        {
+          id: 'bg-4',
+          name: 'Voronoi Cells',
+          imageSrc: 'webgl:voronoi:{"points":20,"colorScheme":"plasma","animate":true}',
+          weight: 20,
+          className: 'Background'
+        }
+      ]
+    },
+    {
+      id: 'char-class',
+      name: 'Character',
+      zIndex: 2,
+      traits: [
+        {
+          id: 'char-1',
+          name: 'Cyberpunk Cat',
+          imageSrc: 'sd:{"graphId":"portrait","prompt":"cyberpunk cat with neon eyes","params":{"style":"vibrant","mood":"energetic"}}',
+          weight: 20,
+          className: 'Character'
+        },
+        {
+          id: 'char-2',
+          name: 'Abstract Form',
+          imageSrc: 'p5:flow-field:{"particles":1000,"noiseScale":0.01,"strokeWeight":2,"palette":"monochrome"}',
+          weight: 30,
+          className: 'Character'
+        },
+        {
+          id: 'char-3',
+          name: 'Geometric Being',
+          imageSrc: 'p5:geometric-shapes:{"shapes":"triangles","count":30,"symmetry":true}',
+          weight: 25,
+          className: 'Character'
+        },
+        {
+          id: 'char-4',
+          name: 'AI Portrait',
+          imageSrc: 'sd:{"graphId":"portrait","prompt":"futuristic robot portrait","params":{"style":"cinematic","mood":"mysterious"}}',
+          weight: 25,
+          className: 'Character'
+        }
+      ]
+    },
+    {
+      id: 'fx-class',
+      name: 'Effects',
+      zIndex: 3,
+      traits: [
+        {
+          id: 'fx-1',
+          name: 'Halftone',
+          imageSrc: 'webgl:halftone:{"dotSize":4,"angle":22.5,"contrast":1.2}',
+          weight: 25,
+          className: 'Effects'
+        },
+        {
+          id: 'fx-2',
+          name: 'CRT Scanlines',
+          imageSrc: 'webgl:crt:{"lineWidth":2,"brightness":1.1,"distortion":0.1}',
+          weight: 25,
+          className: 'Effects'
+        },
+        {
+          id: 'fx-3',
+          name: 'Grid Overlay',
+          imageSrc: 'webgl:grid:{"spacing":20,"lineWidth":1,"color":[1,1,1],"opacity":0.3}',
+          weight: 30,
+          className: 'Effects'
+        },
+        {
+          id: 'fx-4',
+          name: 'None',
+          imageSrc: '',
+          weight: 20,
+          className: 'Effects'
+        }
+      ]
+    },
+    {
+      id: 'audio-class',
+      name: 'Audio',
+      zIndex: 4,
+      traits: [
+        {
+          id: 'audio-1',
+          name: 'Breakbeat',
+          imageSrc: 'strudel:breakbeat:{"tempo":120,"pattern":"[bd sd, hh]*4"}',
+          weight: 30,
+          className: 'Audio'
+        },
+        {
+          id: 'audio-2',
+          name: 'Ambient',
+          imageSrc: 'strudel:ambient:{"tempo":80,"pattern":"<c3 e3 g3 b3>.slow(4)"}',
+          weight: 25,
+          className: 'Audio'
+        },
+        {
+          id: 'audio-3',
+          name: 'Techno',
+          imageSrc: 'strudel:techno:{"tempo":140,"pattern":"bd*4, [~ sd]*2"}',
+          weight: 25,
+          className: 'Audio'
+        },
+        {
+          id: 'audio-4',
+          name: 'Silent',
+          imageSrc: '',
+          weight: 20,
+          className: 'Audio'
+        }
+      ]
+    }
+  ],
+  rules: [
+    {
+      id: 'rule-1',
+      type: 'require' as const,
+      condition: 'bg-1',
+      target: 'char-2'
+    },
+    {
+      id: 'rule-2',
+      type: 'exclude' as const,
+      condition: 'char-1',
+      target: 'fx-2'
+    },
+    {
+      id: 'rule-3',
+      type: 'mutex' as const,
+      condition: 'audio-1',
+      target: 'audio-2'
+    }
+  ],
+  fxConfigs: [
+    {
+      id: 'fx-crt',
+      name: 'CRT Effect',
+      type: 'crt' as const,
+      enabled: false,
+      params: {
+        lineWidth: 2,
+        brightness: 1.1,
+        distortion: 0.1
+      }
+    },
+    {
+      id: 'fx-halftone',
+      name: 'Halftone',
+      type: 'halftone' as const,
+      enabled: false,
+      params: {
+        dotSize: 4,
+        angle: 22.5,
+        contrast: 1.2
+      }
+    },
+    {
+      id: 'fx-glitch',
+      name: 'Glitch',
+      type: 'glitch' as const,
+      enabled: false,
+      params: {
+        intensity: 0.5,
+        frequency: 0.1
+      }
+    }
+  ],
+  seed: 'sample-' + Date.now(),
   collectionSize: 100,
   powerUserMode: false,
 };

@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectStore, Trait } from '@/store/useProjectStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shuffle, RefreshCw } from 'lucide-react';
+import { Shuffle, RefreshCw, AlertTriangle } from 'lucide-react';
 import seedrandom from 'seedrandom';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
+import { RulesEngine, RuleViolation } from '@/lib/rules/RulesEngine';
 
 export const PreviewTab = () => {
-  const { traitClasses, seed, fxConfigs } = useProjectStore();
+  const { traitClasses, rules, seed, fxConfigs } = useProjectStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef(new TraitRenderer());
   const [currentSeed, setCurrentSeed] = useState(seed);
   const [selectedTraits, setSelectedTraits] = useState<Record<string, string>>({});
+  const [violations, setViolations] = useState<RuleViolation[]>([]);
 
   const generateRandomTraits = (seedValue: string) => {
     const rng = seedrandom(seedValue);
+    const selectedTraitObjects: Trait[] = [];
     const traits: Record<string, string> = {};
 
     traitClasses.forEach((traitClass) => {
@@ -28,11 +31,29 @@ export const PreviewTab = () => {
       for (const trait of traitClass.traits) {
         random -= trait.weight;
         if (random <= 0) {
+          selectedTraitObjects.push(trait);
           traits[traitClass.id] = trait.id;
           break;
         }
       }
     });
+
+    // Validate rules
+    const validation = RulesEngine.validate(selectedTraitObjects, rules);
+    setViolations(validation.violations);
+
+    // Auto-fix if violations exist
+    if (!validation.valid) {
+      const fixedTraits = RulesEngine.autoFix(selectedTraitObjects, rules);
+      const fixedTraitsMap: Record<string, string> = {};
+      fixedTraits.forEach((trait) => {
+        const traitClass = traitClasses.find((tc) => tc.name === trait.className);
+        if (traitClass) {
+          fixedTraitsMap[traitClass.id] = trait.id;
+        }
+      });
+      return fixedTraitsMap;
+    }
 
     return traits;
   };
@@ -157,6 +178,23 @@ export const PreviewTab = () => {
       {/* Trait Selection */}
       <Card className="p-6 border-border bg-card">
         <h2 className="text-xl font-bold mb-4">Selected Traits</h2>
+        
+        {violations.length > 0 && (
+          <div className="mb-4 p-3 border border-warning/50 bg-warning/10 rounded">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-warning">Rule Violations Detected</div>
+                <div className="text-xs text-warning/80 mt-1 space-y-1">
+                  {violations.map((v, i) => (
+                    <div key={i}>• {v.message}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {traitClasses.map((traitClass) => {
             const selectedTraitId = selectedTraits[traitClass.id];
