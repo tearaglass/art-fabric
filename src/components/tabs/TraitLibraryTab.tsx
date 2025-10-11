@@ -140,14 +140,14 @@ export function TraitLibraryTab() {
 
       {/* Trait Grid */}
       <ScrollArea className="h-[600px]">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
           {filteredTraits.map(trait => {
             const type = getTraitType(trait.imageSrc);
             const isStatic = type === 'static';
 
             return (
               <Card key={trait.id} className="border-border bg-card overflow-hidden">
-                <div className="aspect-square bg-muted flex items-center justify-center relative border-b border-border">
+                <div className="aspect-square max-h-48 bg-muted flex items-center justify-center relative border-b border-border">
                   {isStatic && trait.imageSrc ? (
                     <img 
                       src={trait.imageSrc} 
@@ -167,7 +167,7 @@ export function TraitLibraryTab() {
                     {getTraitTypeLabel(type)}
                   </Badge>
                 </div>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-3 space-y-2">
                   <div>
                     <h3 className="font-semibold text-sm">{trait.name}</h3>
                     <p className="text-xs text-muted-foreground">{trait.className}</p>

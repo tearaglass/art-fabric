@@ -3,7 +3,7 @@ import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 5000;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -135,6 +135,14 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
+  // Filter out "randomized" toasts to prevent spam
+  const titleStr = typeof props.title === 'string' ? props.title.toLowerCase().trim() : '';
+  const descStr = typeof props.description === 'string' ? props.description.toLowerCase().trim() : '';
+  
+  if (titleStr === 'randomized' || descStr === 'randomized') {
+    return { id: '', dismiss: () => {}, update: () => {} };
+  }
+
   const id = genId();
 
   const update = (props: ToasterToast) =>
