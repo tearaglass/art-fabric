@@ -46,9 +46,9 @@ export const STRUDEL_PRESETS: StrudelPreset[] = [
   {
     id: 'glitch_perc',
     name: 'Glitch Percussion',
-    description: 'Scattered percussion hits',
-    pattern: 'sound("~ cp ~ hh, bd ~ ~ ~").sometimes(fast(2))',
-    tempo: 160,
+  description: 'Scattered percussion hits',
+  pattern: 's("~ cp ~ hh, bd ~ ~ ~").sometimes(fast(2))',
+  tempo: 160,
     bars: 4,
     kitId: 'RolandTR808',
     scale: 'chromatic',
