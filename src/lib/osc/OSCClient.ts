@@ -13,10 +13,13 @@ export class OSCClient {
   private osc: OSC;
   private connected: boolean = false;
   private wsUrl: string;
+  private reconnectTimeout?: number;
 
   constructor(wsUrl?: string) {
-    // Use provided URL or construct from project config
-    this.wsUrl = wsUrl || `wss://iflmreetonzzcdpdrupe.supabase.co/functions/v1/osc-relay`;
+    // Use environment variable for base URL, env-safe
+    const base = import.meta.env.VITE_SUPABASE_URL || 'https://iflmreetonzzcdpdrupe.supabase.co';
+    const wsBase = base.replace('https://', 'wss://');
+    this.wsUrl = wsUrl || `${wsBase}/functions/v1/osc-relay`;
     
     this.osc = new OSC({
       plugin: new OSC.WebsocketClientPlugin({
@@ -31,11 +34,23 @@ export class OSCClient {
     this.osc.on('open', () => {
       console.log('[OSC] Connected to relay server');
       this.connected = true;
+      // Clear any pending reconnection
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = undefined;
+      }
     });
 
     this.osc.on('close', () => {
       console.log('[OSC] Disconnected from relay server');
       this.connected = false;
+      // Auto-reconnect after 3 seconds
+      if (!this.reconnectTimeout) {
+        this.reconnectTimeout = window.setTimeout(() => {
+          console.log('[OSC] Attempting to reconnect...');
+          this.connect().catch(err => console.error('[OSC] Reconnect failed:', err));
+        }, 3000);
+      }
     });
 
     this.osc.on('error', (error) => {
@@ -58,6 +73,11 @@ export class OSCClient {
   }
 
   disconnect() {
+    // Clear reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
     this.osc.close();
     this.connected = false;
   }

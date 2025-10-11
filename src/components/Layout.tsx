@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Radio, Zap, Settings, Library, Sparkles } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
 import { QuickStartTour } from './QuickStartTour';
+import { ErrorBoundary } from './ErrorBoundary';
 import { AssetsTab } from './tabs/AssetsTab';
 import { RulesTab } from './tabs/RulesTab';
 import { DistributionTab } from './tabs/DistributionTab';
@@ -82,48 +83,70 @@ export const Layout = ({ children }: LayoutProps) => {
           </TabsList>
 
           <TabsContent value="assets" className="mt-0">
-            <AssetsTab />
+            <ErrorBoundary>
+              <AssetsTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="rules" className="mt-0">
-            <RulesTab />
+            <ErrorBoundary>
+              <RulesTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="distribution" className="mt-0">
-            <DistributionTab />
+            <ErrorBoundary>
+              <DistributionTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="fx" className="mt-0">
-            <FXBuilderTab />
+            <ErrorBoundary>
+              <FXBuilderTab />
+            </ErrorBoundary>
           </TabsContent>
 
           {powerUserMode && (
             <>
               <TabsContent value="labs" className="mt-0">
-                <LabsTab />
+                <ErrorBoundary>
+                  <LabsTab />
+                </ErrorBoundary>
               </TabsContent>
               <TabsContent value="traitlibrary" className="mt-0">
-                <TraitLibraryTab />
+                <ErrorBoundary>
+                  <TraitLibraryTab />
+                </ErrorBoundary>
               </TabsContent>
               <TabsContent value="performance" className="mt-0">
-                <PerformanceTab />
+                <ErrorBoundary>
+                  <PerformanceTab />
+                </ErrorBoundary>
               </TabsContent>
               <TabsContent value="poweruser" className="mt-0">
-                <PowerUserPanel />
+                <ErrorBoundary>
+                  <PowerUserPanel />
+                </ErrorBoundary>
               </TabsContent>
             </>
           )}
 
           <TabsContent value="preview" className="mt-0">
-            <PreviewTab />
+            <ErrorBoundary>
+              <PreviewTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="export" className="mt-0">
-            <ExportTab />
+            <ErrorBoundary>
+              <ExportTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="settings" className="mt-0">
-            <SettingsTab />
+            <ErrorBoundary>
+              <SettingsTab />
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>

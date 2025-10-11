@@ -9,6 +9,66 @@ interface CacheEntry {
   metadata?: Record<string, any>;
 }
 
+// IndexedDB helper
+const DB_NAME = "LaneyGenCache";
+const STORE_NAME = "renders";
+let idb: IDBDatabase | null = null;
+
+async function openDB(): Promise<IDBDatabase> {
+  if (idb) return idb;
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    
+    request.onsuccess = () => {
+      idb = request.result;
+      resolve(idb);
+    };
+    
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function cachePut(hash: string, blob: Blob): Promise<void> {
+  try {
+    const db = await openDB();
+    const arrayBuffer = await blob.arrayBuffer();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(arrayBuffer, hash);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (error) {
+    console.warn('[RenderCache] IndexedDB put failed:', error);
+  }
+}
+
+export async function cacheGet(hash: string): Promise<Blob | null> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const request = tx.objectStore(STORE_NAME).get(hash);
+    
+    const arrayBuffer = await new Promise<ArrayBuffer | null>((resolve) => {
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    });
+    
+    return arrayBuffer ? new Blob([arrayBuffer]) : null;
+  } catch (error) {
+    console.warn('[RenderCache] IndexedDB get failed:', error);
+    return null;
+  }
+}
+
 class RenderCache {
   private cache: Map<string, CacheEntry> = new Map();
   private maxSize = 100 * 1024 * 1024; // 100MB
@@ -54,6 +114,14 @@ class RenderCache {
 
     this.cache.set(hash, entry);
     this.currentSize += size;
+    
+    // Persist to IndexedDB
+    try {
+      const blob = new Blob([data]);
+      await cachePut(hash, blob);
+    } catch (error) {
+      console.warn('[RenderCache] Failed to persist to IndexedDB:', error);
+    }
 
     // Emit cache event
     const eventMap = {
@@ -83,6 +151,17 @@ class RenderCache {
       // Update timestamp for LRU
       entry.timestamp = Date.now();
       return entry.data;
+    }
+    
+    // Try IndexedDB fallback
+    try {
+      const blob = await cacheGet(hash);
+      if (blob) {
+        const data = await blob.text();
+        return data;
+      }
+    } catch (error) {
+      console.warn('[RenderCache] IndexedDB retrieval failed:', error);
     }
 
     return null;

@@ -311,21 +311,34 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   addTrait: (classId, trait) => {
     const traitClass = get().traitClasses.find((tc) => tc.id === classId);
+    
+    // Validation
+    if (!traitClass) throw new Error(`Trait class ${classId} not found`);
+    if (!trait.id) throw new Error('Trait ID is required');
+    if (traitClass.traits.some(t => t.id === trait.id)) {
+      throw new Error(`Duplicate trait ID: ${trait.id}`);
+    }
+    if (trait.weight <= 0) throw new Error('Trait weight must be > 0');
+    
     set((state) => ({
       traitClasses: state.traitClasses.map((tc) =>
         tc.id === classId ? { ...tc, traits: [...tc.traits, trait] } : tc
       ),
     }));
-    if (traitClass) {
-      eventBus.emit('assets/added', {
-        className: traitClass.name,
-        traitName: trait.name,
-        source: trait.imageSrc || 'unknown',
-      });
-    }
+    
+    eventBus.emit('assets/added', {
+      className: traitClass.name,
+      traitName: trait.name,
+      source: trait.imageSrc || 'unknown',
+    });
   },
 
-  updateTrait: (classId, traitId, updates) =>
+  updateTrait: (classId, traitId, updates) => {
+    // Validation
+    if (updates.weight !== undefined && updates.weight <= 0) {
+      throw new Error('Trait weight must be > 0');
+    }
+    
     set((state) => ({
       traitClasses: state.traitClasses.map((tc) =>
         tc.id === classId
@@ -337,7 +350,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             }
           : tc
       ),
-    })),
+    }));
+  },
 
   removeTrait: (classId, traitId) => {
     const traitClass = get().traitClasses.find((tc) => tc.id === classId);

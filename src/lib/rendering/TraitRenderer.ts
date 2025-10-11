@@ -235,12 +235,17 @@ export class TraitRenderer {
       }
     `;
 
+    // Clean up fragment source: remove old precision, replace gl_FragColor
+    let cleanFragSource = fragmentSource
+      .replace(/precision\s+\w+\s+float;/g, '')
+      .replace(/gl_FragColor/g, 'fragColor');
+    
+    // Build final fragment shader with version header
     const fragmentSourceWithVersion = `#version 300 es
-      ${fragmentSource.replace('precision mediump float;', '')}
       precision mediump float;
       out vec4 fragColor;
-      ${fragmentSource.includes('gl_FragColor') ? '' : 'void main() { fragColor = vec4(1.0); }'}
-    `.replace(/gl_FragColor/g, 'fragColor');
+      ${cleanFragSource}
+    `;
 
     const vertexShader = this.compileShader(gl, gl.VERTEX_SHADER, vertexSource);
     const fragmentShader = this.compileShader(gl, gl.FRAGMENT_SHADER, fragmentSourceWithVersion);
@@ -319,17 +324,120 @@ export class TraitRenderer {
     params: Record<string, any>,
     seed: string
   ): Promise<void> {
-    // TODO: Re-implement after Strudel rebuild
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Placeholder visualization
-    ctx.fillStyle = '#1a1a1a';
+    // Deterministic visualization of Strudel pattern
+    const pattern = params.pattern || '';
+    const tempo = params.tempo || 120;
+    const steps = 16;
+    const bars = 1;
+    
+    // Background
+    ctx.fillStyle = '#0b0d10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#666';
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('Strudel rendering - coming soon', canvas.width / 2, canvas.height / 2);
+    
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < steps * bars; i++) {
+      const x = Math.floor((i / (steps * bars)) * canvas.width);
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let r = 0; r < 12; r++) {
+      const y = Math.floor((r / 12) * canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, canvas.height - y);
+      ctx.stroke();
+    }
+    
+    // Parse pattern into cells
+    const cells = this.parseCells(pattern);
+    const onCol = this.colorFromSeed(seed, 0.9);
+    const ghost = 'rgba(255,255,255,0.15)';
+    
+    const cellW = canvas.width / (steps * bars);
+    const laneH = canvas.height / 12;
+    
+    cells.forEach((tok, i) => {
+      const x = i * cellW;
+      if (tok === '~') {
+        // Rest
+        ctx.fillStyle = ghost;
+        ctx.fillRect(x + 1, canvas.height - laneH * 2, Math.max(1, cellW - 2), 2);
+        return;
+      }
+      
+      // Note lane by pitch
+      const match = /^([a-g][#b]?)(\d)$/.exec(tok);
+      if (!match) return;
+      
+      const [, name, octStr] = match;
+      const oct = parseInt(octStr);
+      const degreeMap: Record<string, number> = {
+        'c': 0, 'c#': 1, 'd': 2, 'd#': 3, 'e': 4, 'f': 5,
+        'f#': 6, 'g': 7, 'g#': 8, 'a': 9, 'a#': 10, 'b': 11
+      };
+      const idx = degreeMap[name] || 0;
+      const lane = oct % 2 === 0 ? 11 - idx : idx;
+      
+      const y = lane * laneH;
+      
+      // Note body (rounded rect)
+      ctx.fillStyle = onCol;
+      const r = 8;
+      const x2 = x + cellW - 1;
+      const y2 = y + laneH - 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x2, y, x2, y + r, r);
+      ctx.arcTo(x2, y2, x2 - r, y2, r);
+      ctx.arcTo(x, y2, x, y2 - r, r);
+      ctx.arcTo(x, y, x + r, y, r);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Vertical accent
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(x + 2, y + 2, 2, laneH - 6);
+    });
+    
+    // Legend
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillText(`${presetId} · ${steps}stp x ${bars}bar · ${tempo}bpm`, 10, canvas.height - 10);
+  }
+  
+  private parseCells(pattern: string): string[] {
+    const raw = pattern.trim().split(/\s+/);
+    const out: string[] = [];
+    
+    for (const tok of raw) {
+      const m = /^([a-g][#b]?\d)(?:\*(\d+))?$/.exec(tok);
+      if (!m) {
+        out.push(tok);
+        continue;
+      }
+      const times = m[2] ? Math.max(1, +m[2]) : 1;
+      for (let i = 0; i < times; i++) out.push(m[1]);
+    }
+    
+    return out;
+  }
+  
+  private colorFromSeed(seed: string, alpha = 1): string {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const hue = ((h % 360) + 360) % 360;
+    return `hsla(${hue}, 90%, 60%, ${alpha})`;
   }
 
   private async renderSDTrait(
