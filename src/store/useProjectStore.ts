@@ -83,7 +83,7 @@ const initialState = {
         {
           id: 'bg-1',
           name: 'Perlin Noise',
-          imageSrc: 'webgl:perlin-noise:{"scale":2.5,"octaves":4,"speed":0.3}',
+          imageSrc: 'webgl:perlin_noise:{"scale":2.5,"octaves":4,"speed":0.3}',
           weight: 30,
           className: 'Background'
         },
@@ -97,7 +97,7 @@ const initialState = {
         {
           id: 'bg-3',
           name: 'Circle Pack',
-          imageSrc: 'p5:circle-pack:{"count":50,"minRadius":5,"maxRadius":40,"colorMode":"vibrant"}',
+          imageSrc: 'p5:circle_pack:{"count":50,"minRadius":5,"maxRadius":40,"colorMode":"vibrant"}',
           weight: 25,
           className: 'Background'
         },
@@ -119,28 +119,28 @@ const initialState = {
         {
           id: 'char-1',
           name: 'Cyberpunk Cat',
-          imageSrc: 'sd:{"graphId":"portrait","prompt":"cyberpunk cat with neon eyes","params":{"style":"vibrant","mood":"energetic"}}',
+          imageSrc: 'sd:{"graphId":"portrait_nft","prompt":"cyberpunk cat with neon eyes","seed":12345,"params":{}}',
           weight: 20,
           className: 'Character'
         },
         {
           id: 'char-2',
           name: 'Abstract Form',
-          imageSrc: 'p5:flow-field:{"particles":1000,"noiseScale":0.01,"strokeWeight":2,"palette":"monochrome"}',
+          imageSrc: 'p5:flow_field:{"particles":1000,"noiseScale":0.01,"strokeWeight":2,"palette":"monochrome"}',
           weight: 30,
           className: 'Character'
         },
         {
           id: 'char-3',
           name: 'Geometric Being',
-          imageSrc: 'p5:geometric-shapes:{"shapes":"triangles","count":30,"symmetry":true}',
+          imageSrc: 'p5:chromatic_aberration:{"shapes":"triangles","count":30,"symmetry":true}',
           weight: 25,
           className: 'Character'
         },
         {
           id: 'char-4',
           name: 'AI Portrait',
-          imageSrc: 'sd:{"graphId":"portrait","prompt":"futuristic robot portrait","params":{"style":"cinematic","mood":"mysterious"}}',
+          imageSrc: 'sd:{"graphId":"portrait_nft","prompt":"futuristic robot portrait","seed":67890,"params":{}}',
           weight: 25,
           className: 'Character'
         }
@@ -162,7 +162,7 @@ const initialState = {
         {
           id: 'fx-2',
           name: 'CRT Scanlines',
-          imageSrc: 'webgl:crt:{"lineWidth":2,"brightness":1.1,"distortion":0.1}',
+          imageSrc: 'webgl:scanlines:{"lineWidth":2,"brightness":1.1,"distortion":0.1}',
           weight: 25,
           className: 'Effects'
         },

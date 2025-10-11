@@ -52,18 +52,35 @@ export class TraitRenderer {
       // Check if trait has webgl data in imageSrc (format: "webgl:presetId:params")
       if (trait.imageSrc.startsWith('webgl:')) {
         const parts = trait.imageSrc.split(':');
-        const presetId = parts[1];
+        let presetId = parts[1];
         const paramsJson = parts.slice(2).join(':'); // Rejoin in case there are colons in JSON
         const params = paramsJson ? JSON.parse(paramsJson) : {};
+        
+        // Apply aliases for backward compatibility
+        const webglAliases: Record<string, string> = {
+          'crt': 'scanlines',
+          'perlin-noise': 'perlin_noise'
+        };
+        presetId = webglAliases[presetId] || presetId;
+        
         return { type: 'webgl', presetId, params };
       }
       
       // Check for p5.js source (format: "p5:presetId:params")
       if (trait.imageSrc.startsWith('p5:')) {
         const parts = trait.imageSrc.split(':');
-        const presetId = parts[1];
+        let presetId = parts[1];
         const paramsJson = parts.slice(2).join(':');
         const params = paramsJson ? JSON.parse(paramsJson) : {};
+        
+        // Apply aliases for backward compatibility
+        const p5Aliases: Record<string, string> = {
+          'circle-pack': 'circle_pack',
+          'flow-field': 'flow_field',
+          'geometric-shapes': 'chromatic_aberration'
+        };
+        presetId = p5Aliases[presetId] || presetId;
+        
         return { type: 'p5', presetId, params };
       }
       
@@ -76,13 +93,38 @@ export class TraitRenderer {
         return { type: 'strudel', presetId, params };
       }
       
-      // Check for SD source (format: "sd:{json}")
+      // Check for SD source (format: "sd:{json}" or legacy "sd:graphId:seed:params")
       if (trait.imageSrc.startsWith('sd:')) {
-        const jsonStr = trait.imageSrc.substring(3); // Everything after 'sd:'
-        const config = JSON.parse(jsonStr);
+        const rest = trait.imageSrc.substring(3);
+        let config: any;
+        
+        // Try canonical JSON format first
+        if (rest.startsWith('{')) {
+          config = JSON.parse(rest);
+        } else {
+          // Legacy format: "sd:graphId:seed:encodedParamsJson"
+          const parts = rest.split(':');
+          const graphId = parts[0];
+          const seed = Number(parts[1]) || Math.floor(Math.random() * 1000000);
+          const paramsJson = parts[2] ? decodeURIComponent(parts[2]) : '{}';
+          const legacyParams = JSON.parse(paramsJson);
+          config = {
+            graphId,
+            seed,
+            prompt: legacyParams.customPrompt || '',
+            params: {}
+          };
+        }
+        
+        // Apply alias and fallback for graphId
+        const graphAliases: Record<string, string> = {
+          'portrait': 'portrait_nft'
+        };
+        const graphId = graphAliases[config.graphId] || config.graphId || 'portrait_nft';
+        
         return { 
           type: 'sd', 
-          graphId: config.graphId || 'portrait',
+          graphId,
           seed: config.seed || Math.floor(Math.random() * 1000000),
           prompt: config.prompt || '',
           params: config.params || {}
@@ -345,9 +387,10 @@ export class TraitRenderer {
   ): Promise<void> {
     const { SD_GRAPH_PRESETS, SDAdapter } = await import('@/lib/sd/SDAdapter');
     
-    const graph = SD_GRAPH_PRESETS.find(g => g.id === graphId);
+    let graph = SD_GRAPH_PRESETS.find(g => g.id === graphId);
     if (!graph) {
-      throw new Error(`SD graph ${graphId} not found`);
+      console.warn(`SD graph ${graphId} not found, using default`);
+      graph = SD_GRAPH_PRESETS[0]; // Fallback to first preset
     }
 
     const adapter = new SDAdapter();

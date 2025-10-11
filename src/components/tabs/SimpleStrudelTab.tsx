@@ -15,8 +15,8 @@ export default function SimpleStrudelTab() {
   const handlePlay = async () => {
     try {
       setError(null);
+      await simpleEngine.start();
       await simpleEngine.evaluate(code);
-      simpleEngine.start();
       setIsPlaying(true);
       toast({ description: 'Playing' });
     } catch (err) {

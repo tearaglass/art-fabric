@@ -86,11 +86,13 @@ export function SDLabTab() {
   };
 
   const handleCopySource = () => {
-    const sourceParams = {
-      customPrompt,
+    const sdConfig = {
+      graphId: selectedGraph.id,
+      prompt: customPrompt,
       seed,
+      params: selectedGraph.params
     };
-    const source = `sd:${selectedGraph.id}:${seed}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
+    const source = `sd:${JSON.stringify(sdConfig)}`;
     navigator.clipboard.writeText(source);
     toast({
       title: 'Source copied',
@@ -122,8 +124,13 @@ export function SDLabTab() {
     }
 
     const traitClass = traitClasses.find(tc => tc.id === selectedClassId);
-    const sourceParams = { customPrompt, seed };
-    const source = `sd:${selectedGraph.id}:${seed}:${encodeURIComponent(JSON.stringify(sourceParams))}`;
+    const sdConfig = {
+      graphId: selectedGraph.id,
+      prompt: customPrompt,
+      seed,
+      params: selectedGraph.params
+    };
+    const source = `sd:${JSON.stringify(sdConfig)}`;
 
     addTrait(selectedClassId, {
       id: `sd-${Date.now()}-${Math.random()}`,

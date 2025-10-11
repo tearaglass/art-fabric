@@ -38,6 +38,7 @@ class SimpleStrudelEngine {
   }
 
   async start() {
+    await this.ensure();
     try { await this.ctx?.resume?.(); } catch {}
     this.replInstance?.scheduler?.start?.();
   }
