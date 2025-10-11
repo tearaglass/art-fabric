@@ -71,24 +71,28 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Evaluating pattern:', code);
 
-      // Ensure code has $: prefix for pattern playback
-      let processedCode = code.trim();
-      if (!processedCode.startsWith('$:')) {
-        processedCode = `$: ${processedCode}`;
+      // Strip optional "$:" and normalize helpers
+      let expr = code.trim().replace(/^\$:\s*/, '');
+
+      // Temporary alias: support "sound(...)" by rewriting to "s(...)"
+      expr = expr.replace(/^sound\s*\(/, 's(');
+
+      // If it's a bare quoted mini-notation, wrap with s("...")
+      const isQuoted = (expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"));
+      if (isQuoted) {
+        expr = `s(${expr})`;
       }
 
-      // Use REPL eval which has full Strudel scope and handles $: syntax
+      // Evaluate in REPL scope first
       let patternCandidate: any = null;
       if (this.replInstance && typeof this.replInstance.eval === 'function') {
-        patternCandidate = await this.replInstance.eval(processedCode);
+        patternCandidate = await this.replInstance.eval(expr);
       } else {
-        // Fallback: strip $: and use core evaluate
-        const codeWithoutPrefix = processedCode.replace(/^\$:\s*/, '');
-        patternCandidate = await evaluate(codeWithoutPrefix);
+        patternCandidate = await evaluate(expr);
       }
 
       if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
-        throw new Error('Your code did not produce a Strudel Pattern. Use $: s("bd sd"), $: note("c e g"), etc.');
+        throw new Error('Your code did not produce a Strudel Pattern. Try s("bd sd"), note("c e g"), etc.');
       }
 
       const pattern = patternCandidate as Pattern;
