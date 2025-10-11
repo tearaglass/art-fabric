@@ -71,13 +71,28 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Evaluating pattern:', code);
 
-      // Use evaluate function for full Strudel function support
-      const pattern = await evaluate(code);
-      
-      if (!pattern) {
-        throw new Error('Pattern evaluation returned null');
+      // Try REPL eval first (has full Strudel scope + transpilation), fallback to core evaluate
+      let patternCandidate: any = null;
+      if (this.replInstance && typeof this.replInstance.eval === 'function') {
+        patternCandidate = await this.replInstance.eval(code);
+      } else {
+        patternCandidate = await evaluate(code);
       }
 
+      // If result isn't a Pattern, try to coerce simple mini-notation strings
+      if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
+        const trimmed = code.trim();
+        const isQuoted = (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"));
+        if (isQuoted && this.replInstance && typeof this.replInstance.eval === 'function') {
+          patternCandidate = await this.replInstance.eval(`s(${trimmed})`);
+        }
+      }
+
+      if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
+        throw new Error('Your code did not produce a Strudel Pattern. Use s("bd sd"), note("c e g"), etc.');
+      }
+
+      const pattern = patternCandidate as Pattern;
       this.currentPattern = pattern;
 
       // Set pattern on scheduler
