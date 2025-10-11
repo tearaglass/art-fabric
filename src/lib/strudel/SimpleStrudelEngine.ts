@@ -1,4 +1,4 @@
-import { repl } from '@strudel/core';
+import { repl, evaluate } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
@@ -22,16 +22,23 @@ class SimpleStrudelEngine {
     try { await this.ctx?.resume?.(); } catch {}
     const r = this.replInstance;
 
+    const clean = code.trim().replace(/^\$:\s*/, '');
     let pattern: any;
-    if (typeof r.eval === 'function') {
-      pattern = await r.eval(code);
-    } else if (typeof r.evaluate === 'function') {
-      pattern = await r.evaluate(code);
-    } else {
-      throw new Error('[Strudel] No REPL eval available');
+
+    try {
+      pattern = evaluate(clean);
+      if (typeof pattern === 'function') pattern = pattern();
+    } catch (e) {
+      if (typeof r.eval === 'function') {
+        pattern = await r.eval(clean);
+      } else if (typeof r.evaluate === 'function') {
+        pattern = await r.evaluate(clean);
+      } else {
+        throw new Error('[Strudel] No REPL eval available');
+      }
+      if (typeof pattern === 'function') pattern = pattern();
     }
 
-    if (typeof pattern === 'function') pattern = pattern();
     if (!pattern || typeof pattern.queryArc !== 'function') {
       throw new Error('Invalid pattern. Try: note("c3 e3 g3").s("sine")');
     }
