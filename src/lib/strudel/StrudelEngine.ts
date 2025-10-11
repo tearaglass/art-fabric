@@ -1,7 +1,5 @@
-import { repl, Pattern, evaluate } from '@strudel/core';
+import { repl, Pattern } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput, samples } from '@strudel/webaudio';
-import '@strudel/mini';
-import '@strudel/tonal';
 import { DEFAULT_SAMPLE_MAP_URL } from './sampleMaps';
 
 export interface StrudelPattern {
@@ -35,12 +33,16 @@ export class StrudelEngine {
       await initAudioOnFirstClick();
       this.audioContext = getAudioContext();
       
+      const output = typeof webaudioOutput === 'function'
+        ? webaudioOutput({ context: this.audioContext })
+        : webaudioOutput;
+
       const replInstance = repl({
-        defaultOutput: webaudioOutput,
+        defaultOutput: output,
         getTime: () => this.audioContext?.currentTime || 0,
       });
 
-      this.evalCode = replInstance.eval;
+      this.evalCode = replInstance.evaluate ?? replInstance.eval;
       this.scheduler = replInstance.scheduler;
       
       console.log('[Strudel] REPL ready:', {
@@ -82,15 +84,13 @@ export class StrudelEngine {
 
       const cleanCode = code.trim().replace(/^\$:\s*/, '');
 
-      let pattern: any;
+      if (!this.evalCode) {
+        throw new Error('[Strudel] Evaluator unavailable');
+      }
 
-      if (typeof this.evalCode === 'function') {
-        pattern = await this.evalCode(cleanCode);
-      } else {
-        pattern = evaluate(cleanCode);
-        if (typeof pattern === 'function') {
-          pattern = pattern();
-        }
+      let pattern: any = await this.evalCode(cleanCode);
+      if (typeof pattern === 'function') {
+        pattern = pattern();
       }
 
       if (!pattern || typeof pattern.queryArc !== 'function') {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, Stethoscope } from 'lucide-react';
 import { simpleEngine } from '@/lib/strudel/SimpleStrudelEngine';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,10 +17,11 @@ export default function SimpleStrudelTab() {
       setError(null);
       await simpleEngine.play(code);
       setIsPlaying(true);
-      toast({ description: 'Playing' });
+      toast({ description: `Playing (${simpleEngine.getContextState()})` });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to play';
       setError(message);
+      setIsPlaying(false);
       toast({ variant: 'destructive', description: message });
     }
   };
@@ -29,6 +30,20 @@ export default function SimpleStrudelTab() {
     simpleEngine.stop();
     setIsPlaying(false);
     toast({ description: 'Stopped' });
+  };
+
+  const handleSelfTest = async () => {
+    try {
+      setError(null);
+      await simpleEngine.selfTest();
+      setIsPlaying(true);
+      toast({ description: 'Self-test pattern playing' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Self-test failed';
+      setError(message);
+      setIsPlaying(false);
+      toast({ variant: 'destructive', description: message });
+    }
   };
 
   return (
@@ -47,8 +62,12 @@ export default function SimpleStrudelTab() {
             <Square className="w-4 h-4 mr-2" />
             Stop
           </Button>
+          <Button onClick={handleSelfTest} variant="outline">
+            <Stethoscope className="w-4 h-4 mr-2" />
+            Self-Test
+          </Button>
           <div className="text-sm text-muted-foreground ml-4">
-            Status: {isPlaying ? 'Playing' : 'Stopped'}
+            Status: {isPlaying ? 'Playing' : 'Stopped'} ({simpleEngine.getContextState()})
           </div>
         </div>
 
