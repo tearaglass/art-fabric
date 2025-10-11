@@ -61,8 +61,11 @@ export function StrudelPatternTab() {
         />
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
-            {error}
+          <div className="p-3 bg-destructive/10 border border-destructive rounded">
+            <p className="font-semibold text-sm text-destructive mb-1">Error:</p>
+            <pre className="text-xs text-destructive/80 whitespace-pre-wrap font-mono">
+              {error}
+            </pre>
           </div>
         )}
 

@@ -1,5 +1,5 @@
-import { repl } from '@strudel/core';
-import { getAudioContext, webaudioOutput } from '@strudel/webaudio';
+import { repl } from '@strudel/repl';
+import { getAudioContext, webaudioOutput, initAudioOnFirstClick } from '@strudel/webaudio';
 
 // Import side-effects for pattern DSL
 import '@strudel/mini';
@@ -13,24 +13,20 @@ export class PatternEngine {
   async init() {
     if (this.replInstance) return;
 
-    // Use Strudel's getAudioContext helper
+    // Initialize audio on user interaction
+    await initAudioOnFirstClick();
     this.ctx = getAudioContext();
     
-    // Create output bound to context
-    const output = typeof webaudioOutput === 'function'
-      ? webaudioOutput({ context: this.ctx })
-      : webaudioOutput;
-
-    // Create REPL
+    // Create REPL with proper configuration
     this.replInstance = repl({
-      defaultOutput: output,
-      getTime: () => this.ctx?.currentTime || 0,
+      defaultOutput: webaudioOutput,
+      editPattern: (pattern) => pattern,
+      onSchedulerError: (err) => {
+        console.error('[Strudel Scheduler Error]', err);
+      },
     });
 
-    console.log('[PatternEngine] Initialized', {
-      hasEvaluate: !!this.replInstance?.evaluate,
-      hasScheduler: !!this.replInstance?.scheduler,
-    });
+    console.log('[PatternEngine] Initialized with @strudel/repl');
   }
 
   async playPattern(code: string) {
@@ -40,21 +36,12 @@ export class PatternEngine {
       await this.ctx.resume();
     }
 
-    // Evaluate pattern
-    const evalFn = this.replInstance.evaluate || this.replInstance.eval;
-    if (!evalFn) {
-      throw new Error('No evaluator found on REPL instance');
-    }
-
-    let pattern = await evalFn.call(this.replInstance, code);
-    if (typeof pattern === 'function') {
-      pattern = pattern();
-    }
-
-    // Schedule it
-    this.replInstance.scheduler?.setPattern?.(pattern, true);
-    if (!this.replInstance.scheduler?.started) {
-      this.replInstance.scheduler?.start?.();
+    try {
+      // Use REPL's evaluate method
+      await this.replInstance.evaluate(code);
+    } catch (err) {
+      console.error('[Pattern Error]', err);
+      throw new Error(err instanceof Error ? err.message : 'Pattern evaluation failed');
     }
   }
 
