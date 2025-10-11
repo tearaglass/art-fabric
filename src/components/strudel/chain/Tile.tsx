@@ -11,6 +11,7 @@ interface TileProps {
   tile: TileInstance;
   onRemove: () => void;
   onUpdate: (params: Record<string, any>) => void;
+  isPlaying?: boolean;
 }
 
 const CATEGORY_COLORS = {
@@ -22,7 +23,7 @@ const CATEGORY_COLORS = {
   output: 'bg-cyan-500/20 border-cyan-500/50 text-cyan-100',
 };
 
-export function Tile({ tile, onRemove, onUpdate }: TileProps) {
+export function Tile({ tile, onRemove, onUpdate, isPlaying = false }: TileProps) {
   const definition = TILE_DEFINITIONS.find(d => d.id === tile.definitionId);
   
   const {
@@ -48,7 +49,9 @@ export function Tile({ tile, onRemove, onUpdate }: TileProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative flex items-center gap-2 p-3 rounded-lg border-2 ${colorClass} backdrop-blur-sm`}
+      className={`relative flex items-center gap-2 p-3 rounded-lg border-2 ${colorClass} backdrop-blur-sm ${
+        isPlaying ? 'animate-pulse-subtle ring-2 ring-primary/30' : ''
+      }`}
     >
       <div
         {...attributes}

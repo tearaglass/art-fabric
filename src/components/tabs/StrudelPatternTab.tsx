@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, Code, Grid3x3, RefreshCw } from 'lucide-react';
+import { Play, Square, Code, Grid3x3, RefreshCw, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { strudelEngine } from '@/lib/strudel/engine';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -13,6 +13,7 @@ import { TileLibrary } from '../strudel/chain/TileLibrary';
 import { ChainBuilder } from '../strudel/chain/ChainBuilder';
 import { TileInstance } from '@/types/StrudelChain';
 import { TILE_DEFINITIONS } from '@/types/StrudelChain';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export function StrudelPatternTab() {
   const { currentPatch } = useProjectStore();
@@ -22,6 +23,8 @@ export function StrudelPatternTab() {
   const [manualCode, setManualCode] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCodePreview, setShowCodePreview] = useState(false);
+  const [lastPlayedCode, setLastPlayedCode] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -91,9 +94,17 @@ export function StrudelPatternTab() {
   const handlePlay = async () => {
     try {
       setError(null);
+      if (!activeCode || activeCode.trim() === '') {
+        toast({ 
+          variant: 'destructive',
+          description: 'Add tiles or write code to play a pattern' 
+        });
+        return;
+      }
       await strudelEngine.run(activeCode);
       strudelEngine.setBpm(currentPatch.bpm);
       setIsPlaying(true);
+      setLastPlayedCode(activeCode);
       toast({ description: 'Pattern playing' });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to play';
@@ -114,8 +125,16 @@ export function StrudelPatternTab() {
   const handleUpdate = async () => {
     try {
       setError(null);
+      if (!activeCode || activeCode.trim() === '') {
+        toast({ 
+          variant: 'destructive',
+          description: 'No code to update' 
+        });
+        return;
+      }
       await strudelEngine.run(activeCode);
       strudelEngine.setBpm(currentPatch.bpm);
+      setLastPlayedCode(activeCode);
       toast({ description: 'Pattern updated!' });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update';
@@ -124,9 +143,13 @@ export function StrudelPatternTab() {
         variant: 'destructive',
         description: message,
       });
-      setIsPlaying(false);
-      strudelEngine.stop();
+      // Keep playing last working pattern instead of stopping
     }
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(activeCode);
+    toast({ description: 'Code copied to clipboard' });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -207,27 +230,64 @@ export function StrudelPatternTab() {
       </Card>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex-1 flex gap-4 mt-4 min-h-0">
-          {viewMode === 'tiles' ? (
-            <>
-              <TileLibrary />
-              <ChainBuilder tiles={tiles} onTilesChange={setTiles} />
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col gap-4">
-              <Textarea
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                placeholder="Write Strudel code here..."
-                className="flex-1 font-mono text-sm"
-              />
-              {error && (
-                <div className="p-3 bg-destructive/10 border border-destructive/50 rounded-md">
-                  <p className="text-sm text-destructive font-mono">{error}</p>
+        <div className="flex-1 flex flex-col gap-4 mt-4 min-h-0">
+          <div className="flex-1 flex gap-4 min-h-0">
+            {viewMode === 'tiles' ? (
+              <>
+                <TileLibrary />
+                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                  <ChainBuilder tiles={tiles} onTilesChange={setTiles} isPlaying={isPlaying} />
+                  
+                  {/* Code Preview Panel */}
+                  {tilesCode && (
+                    <Collapsible open={showCodePreview} onOpenChange={setShowCodePreview}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-between">
+                          <span className="flex items-center gap-2">
+                            <Code className="w-4 h-4" />
+                            Generated Code Preview
+                            {activeCode !== lastPlayedCode && isPlaying && (
+                              <Badge variant="outline" className="text-xs">Changes pending</Badge>
+                            )}
+                          </span>
+                          {showCodePreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="relative">
+                          <pre className="p-4 bg-muted/50 rounded-lg border text-xs font-mono overflow-x-auto">
+                            {tilesCode}
+                          </pre>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-2 right-2 h-6 w-6 p-0"
+                            onClick={handleCopyCode}
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col gap-4">
+                <Textarea
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Write Strudel code here..."
+                  className="flex-1 font-mono text-sm"
+                />
+                {error && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/50 rounded-md">
+                    <p className="text-sm text-destructive font-mono">{error}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </DndContext>
     </div>
