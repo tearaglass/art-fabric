@@ -14,7 +14,10 @@ export const SHADER_PRESETS: ShaderPreset[] = [
     description: 'Organic noise background',
     category: 'background',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uSeed;
 uniform float uScale;
@@ -41,7 +44,7 @@ float noise(vec2 p) {
 void main() {
   vec2 uv = gl_FragCoord.xy / uResolution;
   float n = noise(uv * uScale);
-  gl_FragColor = vec4(uColor * n, 1.0);
+  fragColor = vec4(uColor * n, 1.0);
 }
     `,
     uniforms: {
@@ -55,7 +58,10 @@ void main() {
     description: 'Cellular pattern',
     category: 'background',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uSeed;
 uniform float uScale;
@@ -85,7 +91,7 @@ float voronoi(vec2 x) {
 void main() {
   vec2 uv = gl_FragCoord.xy / uResolution;
   float v = voronoi(uv * uScale);
-  gl_FragColor = vec4(uColor * v, 1.0);
+  fragColor = vec4(uColor * v, 1.0);
 }
     `,
     uniforms: {
@@ -99,7 +105,10 @@ void main() {
     description: 'Retro print effect',
     category: 'overlay',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uSeed;
 uniform float uDotSize;
@@ -110,7 +119,7 @@ void main() {
   vec2 grid = fract(uv * uResolution / uDotSize);
   float dist = length(grid - 0.5);
   float dots = smoothstep(0.4, 0.5, dist);
-  gl_FragColor = vec4(vec3(dots * uIntensity), 1.0 - dots * uIntensity);
+  fragColor = vec4(vec3(dots * uIntensity), 1.0 - dots * uIntensity);
 }
     `,
     uniforms: {
@@ -124,7 +133,10 @@ void main() {
     description: 'Old monitor effect',
     category: 'overlay',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uLineHeight;
 uniform float uIntensity;
@@ -133,7 +145,7 @@ void main() {
   vec2 uv = gl_FragCoord.xy / uResolution;
   float scanline = sin(uv.y * uResolution.y / uLineHeight) * 0.5 + 0.5;
   float alpha = scanline * uIntensity;
-  gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+  fragColor = vec4(0.0, 0.0, 0.0, alpha);
 }
     `,
     uniforms: {
@@ -147,7 +159,10 @@ void main() {
     description: 'Smooth color gradient',
     category: 'background',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uSeed;
 uniform float uAngle;
@@ -160,7 +175,7 @@ void main() {
   vec2 dir = vec2(cos(angle), sin(angle));
   float t = dot(uv - 0.5, dir) + 0.5;
   vec3 color = mix(uColorA, uColorB, t);
-  gl_FragColor = vec4(color, 1.0);
+  fragColor = vec4(color, 1.0);
 }
     `,
     uniforms: {
@@ -175,7 +190,10 @@ void main() {
     description: 'Geometric grid lines',
     category: 'overlay',
     fragmentShader: `
-precision mediump float;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 uniform vec2 uResolution;
 uniform float uSeed;
 uniform float uGridSize;
@@ -186,7 +204,7 @@ void main() {
   vec2 uv = gl_FragCoord.xy / uResolution;
   vec2 grid = fract(uv * uGridSize);
   float lines = step(1.0 - uLineWidth, grid.x) + step(1.0 - uLineWidth, grid.y);
-  gl_FragColor = vec4(uColor, lines);
+  fragColor = vec4(uColor, lines);
 }
     `,
     uniforms: {
