@@ -1,66 +1,53 @@
 import { repl } from '@strudel/core';
-import { getAudioContext, webaudioOutput, samples } from '@strudel/webaudio';
+import { getAudioContext, webaudioOutput } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
 
 class SimpleStrudelEngine {
   private replInstance: any = null;
-  
-  async init() {
-    
-    
-    const ctx = getAudioContext();
-    
-    // Explicitly resume audio context
-    try {
-      await ctx?.resume?.();
-    } catch (e) {
-      console.warn('[SimpleStrudel] Audio context resume failed:', e);
-    }
-    
+  private ctx: AudioContext | null = null;
+
+  private async ensure() {
+    if (this.replInstance) return;
+    this.ctx = getAudioContext();
     this.replInstance = repl({
       defaultOutput: webaudioOutput,
-      getTime: () => ctx?.currentTime || 0,
+      getTime: () => this.ctx?.currentTime || 0,
     });
-    
-    
-    // Load default samples (non-blocking)
-    try {
-      await samples('https://raw.githubusercontent.com/felixroos/dough-samples/main/EmuSP12.json');
-      
-    } catch (e) {
-      console.warn('[SimpleStrudel] Sample map failed to load. Drums may be silent.', e);
-    }
-    
-    
   }
-  
+
   async evaluate(code: string) {
-    if (!this.replInstance) await this.init();
-    const r: any = this.replInstance;
-    if (typeof r.setCode === 'function') {
-      await r.setCode(code);
-    } else if (typeof r.eval === 'function') {
-      await r.eval(code);
+    await this.ensure();
+    const r = this.replInstance;
+    let pattern: any;
+
+    if (typeof r.eval === 'function') {
+      pattern = await r.eval(code);
     } else if (typeof r.evaluate === 'function') {
-      await r.evaluate(code);
+      pattern = await r.evaluate(code);
     } else {
-      throw new Error('[SimpleStrudel] No REPL evaluation method available');
+      throw new Error('[SimpleStrudel] No REPL eval available');
     }
+
+    if (typeof pattern === 'function') pattern = pattern();
+    if (!pattern || typeof pattern.queryArc !== 'function') {
+      throw new Error('Invalid pattern. Try: note("c3 e3 g3").s("sine")');
+    }
+
+    r.scheduler?.setPattern?.(pattern, true);
   }
-  
-  start() {
-    try { getAudioContext()?.resume?.(); } catch {}
+
+  async start() {
+    try { await this.ctx?.resume?.(); } catch {}
     this.replInstance?.scheduler?.start?.();
   }
-  
+
   stop() {
-    this.replInstance?.scheduler.stop();
-    
+    this.replInstance?.scheduler?.stop?.();
   }
-  
+
   isPlaying() {
-    return this.replInstance?.scheduler.started || false;
+    return !!this.replInstance?.scheduler?.started;
   }
 }
 
