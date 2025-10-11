@@ -36,36 +36,25 @@ export class StrudelEngine {
       await initAudioOnFirstClick();
       this.audioContext = getAudioContext();
       
-      // Create REPL instance with proper configuration
+      // Create REPL instance - this gives us all Strudel functions (s, note, n, etc.)
       this.replInstance = repl({
         defaultOutput: webaudioOutput,
         getTime: () => this.audioContext?.currentTime || 0,
       });
 
-      // Debug: verify REPL scope has Strudel helpers
-      try {
-        const sType = await this.replInstance.eval('typeof s');
-        const soundType = await this.replInstance.eval('typeof sound').catch(() => 'error');
-        console.log('[Strudel] REPL helpers -> s:', sType, ' sound:', soundType);
-      } catch (e) {
-        console.warn('[Strudel] Could not probe REPL scope for helpers:', e);
-      }
-
       this.scheduler = this.replInstance.scheduler;
       
-      // Load default sample map for bd, sd, hh, cp, etc.
-      console.log('[Strudel] Loading default sample map...');
+      // Load default sample map
+      console.log('[Strudel] Loading default samples...');
       try {
         await samples(DEFAULT_SAMPLE_MAP_URL);
-        console.log('[Strudel] Sample map loaded');
+        console.log('[Strudel] Samples loaded');
       } catch (error) {
-        console.warn('[Strudel] Failed to load default sample map, continuing without samples:', error);
-        // Continue initialization even if sample loading fails
+        console.warn('[Strudel] Failed to load samples:', error);
       }
       
-      console.log('[Strudel] Audio context initialized:', this.audioContext?.state);
-      console.log('[Strudel] Scheduler created');
       this.isInitialized = true;
+      console.log('[Strudel] Engine ready');
     } catch (error) {
       console.error('[Strudel] Initialization error:', error);
       throw error;
@@ -77,56 +66,33 @@ export class StrudelEngine {
       await this.initialize();
     }
 
+    if (!this.replInstance) {
+      throw new Error('REPL not initialized');
+    }
+
     try {
-      console.log('[Strudel] Evaluating pattern:', code);
+      console.log('[Strudel] Evaluating:', code);
 
-      // Strip optional "$:" and normalize helpers
-      let expr = code.trim().replace(/^\$:\s*/, '');
+      // Clean up code - remove $: prefix if present (it's optional in REPL)
+      const cleanCode = code.trim().replace(/^\$:\s*/, '');
 
-      // Rewrite standalone sound(...) to s(...), but keep method .sound(...) intact
-      expr = expr.replace(/(^|[^.])\bsound\s*\(/g, (_m, p1) => `${p1}s(`);
+      // Evaluate using REPL - this has all Strudel functions (s, note, n, etc.)
+      const pattern = await this.replInstance.eval(cleanCode);
 
-      // If it's a bare quoted mini-notation, wrap with s("...")
-      const isQuoted = (expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"));
-      if (isQuoted) {
-        expr = `s(${expr})`;
+      if (!pattern || typeof pattern.queryArc !== 'function') {
+        throw new Error('Code did not produce a valid pattern. Try: s("bd sd hh") or note("c e g").s("piano")');
       }
 
-      console.log('[Strudel] Normalized expr:', expr);
-      let patternCandidate: any = null;
-      if (this.replInstance && typeof this.replInstance.eval === 'function') {
-        patternCandidate = await this.replInstance.eval(expr);
-      } else {
-        patternCandidate = await evaluate(expr);
-      }
-
-      if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
-        throw new Error('Your code did not produce a Strudel Pattern. Try s("bd sd"), note("c e g"), etc.');
-      }
-
-      const pattern = patternCandidate as Pattern;
       this.currentPattern = pattern;
 
       // Set pattern on scheduler
       if (this.scheduler) {
         this.scheduler.setPattern(pattern, true);
-        console.log('[Strudel] Pattern set on scheduler');
+        console.log('[Strudel] Pattern set');
       }
-
-      console.log('[Strudel] Pattern evaluated successfully');
     } catch (error) {
-      console.error('[Strudel] Pattern evaluation error:', error);
-      
-      // Provide helpful error messages
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMsg.includes('not defined') || errorMsg.includes('is not a function')) {
-        throw new Error(`Function not found: ${errorMsg}. Make sure you're using valid Strudel functions.`);
-      }
-      if (errorMsg.includes('unknown') || errorMsg.includes('sample')) {
-        throw new Error(`Unknown sample: ${errorMsg}. Try loading the default sample map or use known samples like bd, sd, hh, cp.`);
-      }
-      
-      throw new Error(`Pattern error: ${errorMsg}`);
+      console.error('[Strudel] Evaluation error:', error);
+      throw new Error(error instanceof Error ? error.message : 'Pattern evaluation failed');
     }
   }
 
