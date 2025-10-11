@@ -6,80 +6,122 @@ import { Patch } from '@/types/Patch';
 export function compileStrudel(patch: Patch): string {
   const lines: string[] = [];
 
-  // Global tempo and scale
-  lines.push(`cps(${patch.bpm / 60})`);
-  lines.push(`scale("${patch.scale.root} ${patch.scale.mode}")`);
+  // Set global tempo
+  lines.push(`cps(${(patch.bpm / 60).toFixed(2)})`);
   lines.push('');
 
-  // LFOs
-  lines.push(`~ lfo1 = slow(${patch.lfo1.rate}).${patch.lfo1.shape}${patch.lfo1.phase > 0 ? `.phase(${patch.lfo1.phase})` : ''}`);
-  lines.push(`~ lfo2 = slow(${patch.lfo2.rate}).${patch.lfo2.shape}${patch.lfo2.phase > 0 ? `.phase(${patch.lfo2.phase})` : ''}`);
-  
-  // Filter envelope
-  const { a, d, s, r } = patch.filtenv;
-  lines.push(`~ envf = env(${a},${d},${s},${r})`);
-
-  // Route modulators
-  const routesByDst: Record<string, string[]> = {};
-  patch.routes.forEach((route) => {
-    if (!routesByDst[route.dst]) routesByDst[route.dst] = [];
-    const srcVar = route.src === 'LFO1' ? 'lfo1' : route.src === 'LFO2' ? 'lfo2' : 'envf';
-    routesByDst[route.dst].push(`${srcVar} * ${route.amt}`);
-  });
-
-  // Generate route helpers
-  Object.entries(routesByDst).forEach(([dst, sources], idx) => {
-    const min = dst === 'cutoff' ? 900 : dst === 'pan' ? -0.3 : 0;
-    const max = dst === 'cutoff' ? 2400 : dst === 'pan' ? 0.3 : 1;
-    lines.push(`~ mod_${dst}_${idx} = lmap(${min}, ${max}, ${sources.join(' + ')})`);
-  });
-
-  lines.push('');
-
-  // Pattern source (prefer hotspot arp)
+  // Generate note pattern from steps
   const pattern = patch.__hotspot?.arp || generatePatternFromSteps(patch.steps);
-
-  // Oscillators
-  lines.push(`~ oscA = s("${patch.osc1.wave}").n("${pattern}").detune(${patch.osc1.detune}).gain(${patch.osc1.gain.toFixed(2)})`);
-  lines.push(`~ oscB = s("${patch.osc2.wave}").n("${pattern}").detune(${patch.osc2.detune}).gain(${patch.osc2.gain.toFixed(2)})`);
-  lines.push(`~ sub  = s("sine").n("${pattern}").octave(${patch.octave - 1}).gain(${patch.subGain.toFixed(2)})`);
-  lines.push(`~ noi  = s("noise").n("${pattern}").gain(${patch.noiseGain.toFixed(2)})`);
-  lines.push(`~ mixed = (oscA*(1-${patch.wavemix.toFixed(2)}) + oscB*${patch.wavemix.toFixed(2)})`);
-  lines.push('');
-
-  // Voice chain with FX
-  const cutoffBase = patch.cutoff;
-  const cutoffMod = routesByDst.cutoff ? ` + (mod_cutoff_0 - ${cutoffBase})` : '';
-  const panMod = routesByDst.pan ? ` + mod_pan_1` : '';
-  const resoMod = routesByDst.reso ? ` + mod_reso_0` : '';
-
-  // Macro mappings
-  const toneMod = patch.macros.Tone * 800; // boost cutoff
-  const spaceMod = Math.min(0.7, patch.fx.room + patch.macros.Space * 0.3);
-  const moveMod = patch.fx.chorus + patch.macros.Movement * 0.3;
+  
+  // Map wave shapes to Strudel sound names
+  const soundMap: Record<string, string> = {
+    sine: 'sine',
+    sawtooth: 'sawtooth',
+    square: 'square',
+    triangle: 'triangle'
+  };
+  
+  const sound1 = soundMap[patch.osc1.wave] || 'sawtooth';
+  const sound2 = soundMap[patch.osc2.wave] || 'square';
+  
+  // Build main pattern with wavemix between oscillators
+  const wavemix = patch.wavemix;
+  const mainGain = 0.6;
+  
+  lines.push(`note("${pattern}")`);
+  lines.push(`  .sound("${sound1}:${sound2}")`);
+  lines.push(`  .gain("${(1 - wavemix).toFixed(2)} ${wavemix.toFixed(2)}")`);
+  
+  // Add sub oscillator if gain > 0
+  if (patch.subGain > 0.01) {
+    lines.push(`  .add(note("${pattern}").sound("sine").octave(-1).gain(${patch.subGain.toFixed(2)}))`);
+  }
+  
+  // Add noise if gain > 0
+  if (patch.noiseGain > 0.01) {
+    lines.push(`  .add(sound("white").gain(${patch.noiseGain.toFixed(2)}))`);
+  }
+  
+  // Apply filter with modulation
+  const filterMethod = patch.ftype === 'lp' ? 'lpf' : patch.ftype === 'hp' ? 'hpf' : 'bpf';
+  const baseCutoff = patch.cutoff + (patch.macros.Tone * 800);
+  
+  // Build cutoff modulation
+  const lfo1Route = patch.routes.find(r => r.src === 'LFO1' && r.dst === 'cutoff');
+  const lfo2Route = patch.routes.find(r => r.src === 'LFO2' && r.dst === 'cutoff');
+  
+  let cutoffLine = `  .${filterMethod}(${baseCutoff.toFixed(0)}`;
+  
+  if (lfo1Route && lfo1Route.amt > 0.01) {
+    const lfoShape = patch.lfo1.shape === 'sine' ? 'sine' : patch.lfo1.shape === 'saw' ? 'saw' : 'tri';
+    const lfoMin = baseCutoff - (lfo1Route.amt * 1000);
+    const lfoMax = baseCutoff + (lfo1Route.amt * 1000);
+    cutoffLine = `  .${filterMethod}(${lfoShape}.slow(${patch.lfo1.rate}).range(${lfoMin.toFixed(0)}, ${lfoMax.toFixed(0)})`;
+  } else if (lfo2Route && lfo2Route.amt > 0.01) {
+    const lfoShape = patch.lfo2.shape === 'sine' ? 'sine' : patch.lfo2.shape === 'saw' ? 'saw' : 'tri';
+    const lfoMin = baseCutoff - (lfo2Route.amt * 1000);
+    const lfoMax = baseCutoff + (lfo2Route.amt * 1000);
+    cutoffLine = `  .${filterMethod}(${lfoShape}.slow(${patch.lfo2.rate}).range(${lfoMin.toFixed(0)}, ${lfoMax.toFixed(0)})`;
+  }
+  
+  lines.push(`${cutoffLine})`);
+  lines.push(`  .resonance(${patch.reso.toFixed(2)})`);
+  
+  // Pan modulation
+  const panRoute = patch.routes.find(r => (r.src === 'LFO1' || r.src === 'LFO2') && r.dst === 'pan');
+  if (panRoute && panRoute.amt > 0.01) {
+    const lfo = panRoute.src === 'LFO1' ? patch.lfo1 : patch.lfo2;
+    const lfoShape = lfo.shape === 'sine' ? 'sine' : lfo.shape === 'saw' ? 'saw' : 'tri';
+    lines.push(`  .pan(${lfoShape}.slow(${lfo.rate}).range(-${panRoute.amt.toFixed(2)}, ${panRoute.amt.toFixed(2)}))`);
+  } else {
+    lines.push(`  .pan(${patch.pan.toFixed(2)})`);
+  }
+  
+  // Envelope
+  lines.push(`  .adsr(${patch.amp.a}:${patch.amp.d}:${patch.amp.s}:${patch.amp.r})`);
+  
+  // Glide
+  if (patch.glide > 0.01) {
+    lines.push(`  .glide(${patch.glide.toFixed(3)})`);
+  }
+  
+  // Effects chain
   const gritDrive = Math.min(0.6, patch.drive + patch.macros.Grit * 0.4);
-  const gritCrush = Math.min(0.6, patch.fx.crush + patch.macros.Grit * 0.3);
-
-  lines.push('withFX(');
-  lines.push('  (mixed | sub | noi)');
-  lines.push(`    .glide(${patch.glide.toFixed(3)})`);
-  lines.push(`    .pan(${patch.pan}${panMod})`);
-  lines.push(`    .adsr(${patch.amp.a},${patch.amp.d},${patch.amp.s},${patch.amp.r})`);
+  const spaceMod = Math.min(0.7, patch.fx.room + patch.macros.Space * 0.3);
+  const moveMod = Math.min(0.6, patch.fx.chorus + patch.macros.Movement * 0.3);
+  const gritCrush = Math.min(8, patch.fx.crush * 8 + patch.macros.Grit * 4);
   
-  const filtEnvAmt = patch.filtenv.amt * 2800;
-  lines.push(`    .${patch.ftype}( (${cutoffBase + toneMod} + envf*${filtEnvAmt})${cutoffMod}, ${patch.reso}${resoMod})`);
+  if (gritDrive > 0.01) {
+    lines.push(`  .distort(${gritDrive.toFixed(2)})`);
+  }
   
-  lines.push(`    .gain(1)`);
-  lines.push(`    .fast(${patch.density})`);
-  lines.push(`    .swing(${patch.swing.toFixed(2)})`);
-  lines.push(')');
-  lines.push('where');
-  lines.push('  withFX = _ => _');
-  lines.push(`    .drive(${gritDrive.toFixed(2)})`);
-  lines.push(`    .room(${spaceMod.toFixed(2)})`);
-  lines.push(`    .delay(${patch.fx.delay.toFixed(2)})`);
-  lines.push(`    .crush(${gritCrush.toFixed(2)})`);
-  lines.push(`    .chorus(${moveMod.toFixed(2)})`);
+  if (spaceMod > 0.01) {
+    lines.push(`  .room(${spaceMod.toFixed(2)})`);
+  }
+  
+  if (patch.fx.delay > 0.01) {
+    lines.push(`  .delay(${patch.fx.delay.toFixed(2)})`);
+  }
+  
+  if (gritCrush > 0.5) {
+    lines.push(`  .crush(${gritCrush.toFixed(1)})`);
+  }
+  
+  if (moveMod > 0.01) {
+    lines.push(`  .phaser(${moveMod.toFixed(2)})`);
+  }
+  
+  // Density and swing
+  if (patch.density !== 1) {
+    lines.push(`  .fast(${patch.density})`);
+  }
+  
+  if (patch.swing > 0.01) {
+    lines.push(`  .swing(${patch.swing.toFixed(2)})`);
+  }
+  
+  // Final gain
+  lines.push(`  .gain(${mainGain.toFixed(2)})`);
 
   return lines.join('\n');
 }
