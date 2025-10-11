@@ -1,29 +1,57 @@
 import { useState, useMemo, useEffect } from 'react';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, Code, Wand2 } from 'lucide-react';
+import { Play, Square, Code, Grid3x3 } from 'lucide-react';
 import { strudelEngine } from '@/lib/strudel/engine';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/store/useProjectStore';
 import { compileStrudel } from '@/lib/strudel/compile';
+import { TileLibrary } from '../strudel/chain/TileLibrary';
+import { ChainBuilder } from '../strudel/chain/ChainBuilder';
+import { TileInstance } from '@/types/StrudelChain';
+import { TILE_DEFINITIONS } from '@/types/StrudelChain';
 
 export function StrudelPatternTab() {
   const { currentPatch } = useProjectStore();
-  const [advancedMode, setAdvancedMode] = useState(false);
+  const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<'tiles' | 'code'>('tiles');
+  const [tiles, setTiles] = useState<TileInstance[]>([]);
   const [manualCode, setManualCode] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
-  // Auto-compile code from patch
-  const compiledCode = useMemo(() => {
-    return compileStrudel(currentPatch);
-  }, [currentPatch]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
-  // Use manual code in advanced mode, otherwise use auto-compiled
-  const activeCode = advancedMode ? manualCode : compiledCode;
+  // Compile current patch to Strudel code
+  const compiledCode = useMemo(() => compileStrudel(currentPatch), [currentPatch]);
+
+  // Compile tiles to Strudel code
+  const tilesCode = useMemo(() => {
+    if (tiles.length === 0) return '';
+    
+    const chain = tiles.map(tile => {
+      const def = TILE_DEFINITIONS.find(d => d.id === tile.definitionId);
+      if (!def) return '';
+      
+      const params = Object.values(tile.params).map(v => 
+        typeof v === 'string' ? `"${v}"` : v
+      );
+      
+      return `${def.fn}(${params.join(', ')})`;
+    }).join('.');
+    
+    return chain;
+  }, [tiles]);
+
+  // Use tiles code in tiles mode, manual code in code mode
+  const activeCode = viewMode === 'tiles' ? tilesCode : manualCode;
 
   // Auto-play on component mount
   useEffect(() => {
@@ -67,89 +95,101 @@ export function StrudelPatternTab() {
     setError(null);
   };
 
-  const toggleAdvancedMode = () => {
-    if (!advancedMode) {
-      // Switching to advanced: copy compiled code to manual editor
-      setManualCode(compiledCode);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    // Dragging from library to chain
+    if (active.id.toString().startsWith('library-') && over.id === 'chain-builder') {
+      const definition = active.data.current?.definition;
+      if (definition) {
+        const newTile: TileInstance = {
+          id: `${definition.id}-${Date.now()}`,
+          definitionId: definition.id,
+          params: { ...definition.defaultParams },
+        };
+        setTiles([...tiles, newTile]);
+      }
     }
-    setAdvancedMode(!advancedMode);
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Code className="w-5 h-5" />
-              Live Strudel Code
-              {!advancedMode && (
-                <Badge variant="secondary" className="ml-2">Auto-Generated</Badge>
-              )}
-            </CardTitle>
-            <CardDescription>
-              {advancedMode 
-                ? 'Manual editing enabled - changes won\'t affect controls' 
-                : 'Code updates automatically when you change controls'}
-            </CardDescription>
+    <div className="h-full flex flex-col">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Strudel Pattern</CardTitle>
+              <CardDescription>
+                Magnetic poetry-style pattern builder
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'tiles' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('tiles')}
+              >
+                <Grid3x3 className="w-4 h-4 mr-2" /> Tiles
+              </Button>
+              <Button
+                variant={viewMode === 'code' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  if (viewMode === 'tiles') {
+                    setManualCode(tilesCode || compiledCode);
+                  }
+                  setViewMode('code');
+                }}
+              >
+                <Code className="w-4 h-4 mr-2" /> Code
+              </Button>
+            </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={toggleAdvancedMode}
-            className="gap-2"
-          >
-            <Wand2 className="w-4 h-4" />
-            {advancedMode ? 'Auto Mode' : 'Advanced'}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2 items-center">
-          <Button onClick={handlePlay} disabled={isPlaying}>
+        </CardHeader>
+        <CardContent className="flex gap-4 p-4">
+          <Button onClick={handlePlay} disabled={isPlaying} variant="default" size="sm">
             <Play className="w-4 h-4 mr-2" /> Play
           </Button>
-          <Button onClick={handleStop} disabled={!isPlaying} variant="secondary">
+          <Button onClick={handleStop} disabled={!isPlaying} variant="outline" size="sm">
             <Square className="w-4 h-4 mr-2" /> Stop
           </Button>
           <div className="text-sm text-muted-foreground ml-4">
             Status: {isPlaying ? 'Playing' : 'Stopped'}
           </div>
+          {error && (
+            <Badge variant="destructive" className="ml-auto">
+              Error
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div className="flex-1 flex gap-4 mt-4 min-h-0">
+          {viewMode === 'tiles' ? (
+            <>
+              <TileLibrary />
+              <ChainBuilder tiles={tiles} onTilesChange={setTiles} />
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col gap-4">
+              <Textarea
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                placeholder="Write Strudel code here..."
+                className="flex-1 font-mono text-sm"
+              />
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/50 rounded-md">
+                  <p className="text-sm text-destructive font-mono">{error}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
-        <Textarea
-          value={activeCode}
-          onChange={(e) => advancedMode && setManualCode(e.target.value)}
-          readOnly={!advancedMode}
-          placeholder='Adjust controls to generate code...'
-          className={`font-mono min-h-[200px] text-xs ${!advancedMode ? 'bg-muted/30' : ''}`}
-        />
-
-        {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive rounded">
-            <p className="font-semibold text-sm text-destructive mb-1">Error:</p>
-            <pre className="text-xs text-destructive/80 whitespace-pre-wrap font-mono">
-              {error}
-            </pre>
-          </div>
-        )}
-
-        {!advancedMode && (
-          <div className="p-4 bg-muted/50 rounded-lg space-y-2 text-sm border border-border">
-            <p className="font-medium flex items-center gap-2">
-              <Code className="w-4 h-4" />
-              Live Control Mapping
-            </p>
-            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs">
-              <li>Move any slider or knob to see code update instantly</li>
-              <li>BPM → <code>cps()</code> value</li>
-              <li>Filter → <code>.lp()</code> or <code>.hp()</code> frequency</li>
-              <li>Waveshape → <code>s("sine")</code>, <code>s("saw")</code>, etc.</li>
-              <li>Switch to Advanced mode for manual editing</li>
-            </ul>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </DndContext>
+    </div>
   );
 }
