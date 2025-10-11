@@ -122,23 +122,56 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
       gl.shaderSource(vsObj, vs);
       gl.compileShader(vsObj);
       if (!gl.getShaderParameter(vsObj, gl.COMPILE_STATUS)) {
-        throw new Error(gl.getShaderInfoLog(vsObj) || 'VS compile error');
+        const vsLog = gl.getShaderInfoLog(vsObj) || 'VS compile error';
+        gl.deleteShader(vsObj);
+        throw new Error(vsLog);
       }
 
+      // Use the PARAMETER fsSource, not the component prop fragmentSource
       const fsObj = gl.createShader(gl.FRAGMENT_SHADER)!;
-      const fs = fragmentSource?.trim() ? fragmentSource : DEFAULT_FS;
-      gl.shaderSource(fsObj, fs);
+      gl.shaderSource(fsObj, fsSource);
       gl.compileShader(fsObj);
       
       if (!gl.getShaderParameter(fsObj, gl.COMPILE_STATUS)) {
         const log = gl.getShaderInfoLog(fsObj) || 'FS compile error';
-        // Fallback to default
-        gl.shaderSource(fsObj, DEFAULT_FS);
-        gl.compileShader(fsObj);
-        if (!gl.getShaderParameter(fsObj, gl.COMPILE_STATUS)) {
-          throw new Error(log);
+        gl.deleteShader(fsObj);
+        gl.deleteShader(vsObj);
+        
+        // Create NEW shader object for fallback
+        const fallbackFs = gl.createShader(gl.FRAGMENT_SHADER)!;
+        gl.shaderSource(fallbackFs, DEFAULT_FS);
+        gl.compileShader(fallbackFs);
+        
+        if (!gl.getShaderParameter(fallbackFs, gl.COMPILE_STATUS)) {
+          const fallbackLog = gl.getShaderInfoLog(fallbackFs) || 'Fallback compile error';
+          gl.deleteShader(fallbackFs);
+          throw new Error(`${log}\n\nFallback also failed: ${fallbackLog}`);
         }
+        
         setErr(log);
+        
+        // Link with fallback shader
+        const prog = gl.createProgram()!;
+        gl.attachShader(prog, vsObj);
+        gl.attachShader(prog, fallbackFs);
+        gl.linkProgram(prog);
+        
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+          const linkLog = gl.getProgramInfoLog(prog) || 'Link error';
+          gl.deleteShader(fallbackFs);
+          throw new Error(linkLog);
+        }
+
+        const loc = gl.getAttribLocation(prog, 'aPos');
+        gl.useProgram(prog);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+        
+        // Clean up shaders after linking
+        gl.deleteShader(fallbackFs);
+        
+        return prog;
       } else {
         setErr(null);
       }
@@ -149,7 +182,10 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
       gl.linkProgram(prog);
       
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        throw new Error(gl.getProgramInfoLog(prog) || 'Link error');
+        const linkLog = gl.getProgramInfoLog(prog) || 'Link error';
+        gl.deleteShader(vsObj);
+        gl.deleteShader(fsObj);
+        throw new Error(linkLog);
       }
 
       const loc = gl.getAttribLocation(prog, 'aPos');
@@ -157,6 +193,10 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
       gl.bindBuffer(gl.ARRAY_BUFFER, quad);
       gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      
+      // Clean up shaders after linking
+      gl.deleteShader(vsObj);
+      gl.deleteShader(fsObj);
       
       return prog;
     }
@@ -175,10 +215,18 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
     }
 
     try {
-      program = compile(fragmentSource || DEFAULT_FS);
+      const source = fragmentSource?.trim() ? fragmentSource : DEFAULT_FS;
+      program = compile(source);
     } catch (e: any) {
+      console.error('[ShaderPreview] Compilation failed:', e);
       setErr(e.message || String(e));
-      program = compile(DEFAULT_FS);
+      try {
+        program = compile(DEFAULT_FS);
+      } catch (fallbackError: any) {
+        console.error('[ShaderPreview] Fallback failed:', fallbackError);
+        setErr('Shader compilation failed completely');
+        return;
+      }
     }
 
     const uRes = gl.getUniformLocation(program!, 'uResolution');

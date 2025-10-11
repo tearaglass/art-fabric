@@ -36,6 +36,7 @@ export const ShaderLabTab = () => {
         defaults[name] = config.default;
       }
       setUniformValues(defaults);
+      setRenderedImage(null); // Clear previous render
     }
   }, [selectedPreset]);
 
@@ -327,10 +328,16 @@ export const ShaderLabTab = () => {
             </div>
           </div>
 
-          <ShaderPreview
-            fragmentSource={selectedPreset?.fragmentShader}
-            seed={parseFloat(seed)}
-          />
+          {selectedPreset?.fragmentShader ? (
+            <ShaderPreview
+              fragmentSource={selectedPreset.fragmentShader}
+              seed={parseFloat(seed)}
+            />
+          ) : (
+            <div className="w-full aspect-video rounded-xl border border-border bg-muted flex items-center justify-center text-muted-foreground">
+              Select a shader preset to preview
+            </div>
+          )}
           <canvas
             ref={canvasRef}
             width={512}
