@@ -1,5 +1,5 @@
 import { repl } from '@strudel/core';
-import { getAudioContext, webaudioOutput } from '@strudel/webaudio';
+import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
 
@@ -9,6 +9,7 @@ class SimpleStrudelEngine {
 
   private async ensure() {
     if (this.replInstance) return;
+    await initAudioOnFirstClick();
     this.ctx = getAudioContext();
     this.replInstance = repl({
       defaultOutput: webaudioOutput,
@@ -16,17 +17,18 @@ class SimpleStrudelEngine {
     });
   }
 
-  async evaluate(code: string) {
+  async play(code: string) {
     await this.ensure();
+    try { await this.ctx?.resume?.(); } catch {}
     const r = this.replInstance;
-    let pattern: any;
 
+    let pattern: any;
     if (typeof r.eval === 'function') {
       pattern = await r.eval(code);
     } else if (typeof r.evaluate === 'function') {
       pattern = await r.evaluate(code);
     } else {
-      throw new Error('[SimpleStrudel] No REPL eval available');
+      throw new Error('[Strudel] No REPL eval available');
     }
 
     if (typeof pattern === 'function') pattern = pattern();
@@ -35,12 +37,9 @@ class SimpleStrudelEngine {
     }
 
     r.scheduler?.setPattern?.(pattern, true);
-  }
-
-  async start() {
-    await this.ensure();
-    try { await this.ctx?.resume?.(); } catch {}
-    this.replInstance?.scheduler?.start?.();
+    if (!r.scheduler?.started) {
+      r.scheduler?.start?.();
+    }
   }
 
   stop() {
@@ -49,6 +48,10 @@ class SimpleStrudelEngine {
 
   isPlaying() {
     return !!this.replInstance?.scheduler?.started;
+  }
+
+  getContextState() {
+    return this.ctx?.state || 'closed';
   }
 }
 

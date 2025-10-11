@@ -15,8 +15,7 @@ export default function SimpleStrudelTab() {
   const handlePlay = async () => {
     try {
       setError(null);
-      await simpleEngine.start();
-      await simpleEngine.evaluate(code);
+      await simpleEngine.play(code);
       setIsPlaying(true);
       toast({ description: 'Playing' });
     } catch (err) {
@@ -36,10 +35,10 @@ export default function SimpleStrudelTab() {
     <Card>
       <CardHeader>
         <CardTitle>Strudel Lab</CardTitle>
-        <CardDescription>Live coding music with Strudel</CardDescription>
+        <CardDescription>Minimal live coding music environment</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Button onClick={handlePlay} disabled={isPlaying}>
             <Play className="w-4 h-4 mr-2" />
             Play
@@ -48,12 +47,15 @@ export default function SimpleStrudelTab() {
             <Square className="w-4 h-4 mr-2" />
             Stop
           </Button>
+          <div className="text-sm text-muted-foreground ml-4">
+            Status: {isPlaying ? 'Playing' : 'Stopped'}
+          </div>
         </div>
 
         <Textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder='Try: s("bd sd") or note("c e g").s("sine")'
+          placeholder='Try: note("c3 e3 g3").s("sine")'
           className="font-mono min-h-[200px]"
         />
 
@@ -64,10 +66,10 @@ export default function SimpleStrudelTab() {
         )}
 
         <div className="text-sm text-muted-foreground space-y-1">
-          <p><strong>Examples:</strong></p>
-          <p>• <code>note("c3 e3 g3").s("sine")</code> - synth chord (no samples)</p>
-          <p>• <code>s("bd sd")</code> - kick and snare (requires samples)</p>
-          <p>• <code>s("bd*4")</code> - 4 kicks per cycle (requires samples)</p>
+          <p><strong>Basic Examples:</strong></p>
+          <p>• <code>note("c3 e3 g3").s("sine")</code> - simple chord</p>
+          <p>• <code>note("c d e f g").s("triangle")</code> - melody</p>
+          <p>• <code>note("c3*4").s("sawtooth")</code> - repetition</p>
         </div>
       </CardContent>
     </Card>
