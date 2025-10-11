@@ -1,5 +1,5 @@
 // Default sample map and registry for Strudel
-export const DEFAULT_SAMPLE_MAP_URL = 'https://raw.githubusercontent.com/tidalcycles/Dirt-Samples/master/samples.json';
+export const DEFAULT_SAMPLE_MAP_URL = 'https://strudel.tidalcycles.org/EmuSP12.json';
 
 export interface SampleMap {
   id: string;

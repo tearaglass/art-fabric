@@ -46,8 +46,13 @@ export class StrudelEngine {
       
       // Load default sample map for bd, sd, hh, cp, etc.
       console.log('[Strudel] Loading default sample map...');
-      await samples(DEFAULT_SAMPLE_MAP_URL);
-      console.log('[Strudel] Sample map loaded');
+      try {
+        await samples(DEFAULT_SAMPLE_MAP_URL);
+        console.log('[Strudel] Sample map loaded');
+      } catch (error) {
+        console.warn('[Strudel] Failed to load default sample map, continuing without samples:', error);
+        // Continue initialization even if sample loading fails
+      }
       
       console.log('[Strudel] Audio context initialized:', this.audioContext?.state);
       console.log('[Strudel] Scheduler created');
