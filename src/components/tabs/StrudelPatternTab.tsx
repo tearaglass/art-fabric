@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Play, Square, Code, Wand2 } from 'lucide-react';
-import { patternEngine } from '@/lib/strudel/PatternEngine';
+import { strudelEngine } from '@/lib/strudel/engine';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/store/useProjectStore';
 import { compileStrudel } from '@/lib/strudel/compile';
@@ -25,10 +25,30 @@ export function StrudelPatternTab() {
   // Use manual code in advanced mode, otherwise use auto-compiled
   const activeCode = advancedMode ? manualCode : compiledCode;
 
+  // Auto-play on component mount
+  useEffect(() => {
+    const autoPlay = async () => {
+      if (!strudelEngine.isInitialized()) {
+        try {
+          await strudelEngine.run(activeCode);
+          strudelEngine.setBpm(currentPatch.bpm);
+          setIsPlaying(true);
+        } catch (err) {
+          console.error('[StrudelPatternTab] Auto-play failed:', err);
+        }
+      } else {
+        setIsPlaying(true);
+      }
+    };
+    
+    autoPlay();
+  }, []); // Run once on mount
+
   const handlePlay = async () => {
     try {
       setError(null);
-      await patternEngine.playPattern(activeCode);
+      await strudelEngine.run(activeCode);
+      strudelEngine.setBpm(currentPatch.bpm);
       setIsPlaying(true);
       toast({ description: 'Pattern playing' });
     } catch (err) {
@@ -42,7 +62,7 @@ export function StrudelPatternTab() {
   };
 
   const handleStop = () => {
-    patternEngine.stop();
+    strudelEngine.stop();
     setIsPlaying(false);
     setError(null);
   };
@@ -93,7 +113,7 @@ export function StrudelPatternTab() {
             <Square className="w-4 h-4 mr-2" /> Stop
           </Button>
           <div className="text-sm text-muted-foreground ml-4">
-            Status: {isPlaying ? 'Playing' : 'Stopped'} ({patternEngine.getContextState()})
+            Status: {isPlaying ? 'Playing' : 'Stopped'}
           </div>
         </div>
 
