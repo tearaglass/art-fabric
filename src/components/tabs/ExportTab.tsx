@@ -125,24 +125,42 @@ export const ExportTab = () => {
       return;
     }
 
-    setIsExporting(true);
-    setProgress(0);
-    setValidationErrors(0);
+      setIsExporting(true);
+      setProgress(0);
+      setValidationErrors(0);
 
-    try {
-      const zip = new JSZip();
-      const imagesFolder = zip.folder('images');
-      const metadataFolder = zip.folder('metadata');
+      try {
+        const zip = new JSZip();
+        const imagesFolder = zip.folder('images');
+        const metadataFolder = zip.folder('metadata');
 
-      for (let i = 1; i <= collectionSize; i++) {
-        const tokenSeed = `${seed}-${i}`;
-        const { blob, metadata } = await generateToken(i, tokenSeed);
+        // Parallel processing with batches of 8
+        const BATCH_SIZE = 8;
+        const batches: number[][] = [];
+        for (let i = 1; i <= collectionSize; i += BATCH_SIZE) {
+          batches.push(
+            Array.from({ length: Math.min(BATCH_SIZE, collectionSize - i + 1) }, (_, j) => i + j)
+          );
+        }
 
-        imagesFolder?.file(`${i}.png`, blob);
-        metadataFolder?.file(`${i}.json`, JSON.stringify(metadata, null, 2));
+        let completed = 0;
+        for (const batch of batches) {
+          const results = await Promise.all(
+            batch.map(async (edition) => {
+              const tokenSeed = `${seed}-${edition}`;
+              const { blob, metadata } = await generateToken(edition, tokenSeed);
+              return { edition, blob, metadata };
+            })
+          );
 
-        setProgress((i / collectionSize) * 100);
-      }
+          results.forEach(({ edition, blob, metadata }) => {
+            imagesFolder?.file(`${edition}.png`, blob);
+            metadataFolder?.file(`${edition}.json`, JSON.stringify(metadata, null, 2));
+          });
+
+          completed += batch.length;
+          setProgress((completed / collectionSize) * 100);
+        }
 
       // Add manifest
       const manifest = {
@@ -169,12 +187,12 @@ export const ExportTab = () => {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast({
-        title: 'Export complete!',
-        description: validationErrors > 0 
-          ? `${collectionSize} NFTs generated with ${validationErrors} rule violations auto-fixed.`
-          : `${collectionSize} NFTs generated successfully.`,
-      });
+        toast({
+          title: 'Export complete!',
+          description: validationErrors > 0 
+            ? `${collectionSize} NFTs generated (8x parallel) with ${validationErrors} rule violations auto-fixed.`
+            : `${collectionSize} NFTs generated successfully (8x parallel).`,
+        });
     } catch (error) {
       console.error('Export failed:', error);
       toast({

@@ -5,14 +5,15 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Square, Circle, Radio, Shuffle, Download } from 'lucide-react';
+import { Play, Pause, Square, Circle, Radio, Shuffle, Download, Package } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 import { getOSCClient } from '@/lib/osc/OSCClient';
 import { useToast } from '@/hooks/use-toast';
+import { exportPerformanceBundle } from '@/lib/export/PerformanceBundleExporter';
 
 export const PerformanceTab = () => {
-  const { traitClasses, seed } = useProjectStore();
+  const { traitClasses, seed, currentPatch } = useProjectStore();
   const { toast } = useToast();
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -26,6 +27,21 @@ export const PerformanceTab = () => {
   const [bpmSync, setBpmSync] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [currentTokenId, setCurrentTokenId] = useState(1);
+
+  const handleExportBundle = async () => {
+    const blob = await exportPerformanceBundle(currentPatch, undefined, canvasRef.current || undefined);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `performance-${Date.now()}.zip`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Performance Bundle Exported',
+      description: 'ZIP contains patch, code, MIDI, viz, and checksums',
+    });
+  };
 
   const oscClient = getOSCClient();
 
@@ -89,10 +105,7 @@ export const PerformanceTab = () => {
       oscClient.randomize();
     }
 
-    toast({
-      title: 'Randomized',
-      description: `Token #${newTokenId}`,
-    });
+    // Removed toast - too noisy during live performance
   };
 
   const handlePlayPause = () => {
@@ -235,6 +248,15 @@ export const PerformanceTab = () => {
                 <>
                   <Radio className="w-5 h-5" />
                   Record
+                </>
+              )}
+            </Button>
+
+            <Button size="lg" onClick={handleExportBundle} variant="outline" className="gap-2">
+              <Package className="w-4 h-4" />
+              Export Bundle
+            </Button>
+          </div>
                 </>
               )}
             </Button>
