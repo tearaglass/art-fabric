@@ -6,6 +6,8 @@ import { ShaderLabTab } from './ShaderLabTab';
 import { P5LabTab } from './P5LabTab';
 import { StrudelPatternTab } from './StrudelPatternTab';
 import { SDLabTab } from './SDLabTab';
+import { SynthPanel } from '@/components/strudel/SynthPanel';
+import { HotspotChords } from '@/components/strudel/HotspotChords';
 
 export function LabsTab() {
   return (
@@ -47,7 +49,15 @@ export function LabsTab() {
           </TabsContent>
 
           <TabsContent value="strudel" className="mt-0">
-            <StrudelPatternTab />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <SynthPanel />
+                <div className="space-y-4">
+                  <StrudelPatternTab />
+                  <HotspotChords />
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="sd" className="mt-0">
