@@ -5,11 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Play, Download, Copy, Plus } from 'lucide-react';
+import { Play, Download, Copy, Plus, Image as ImageIcon } from 'lucide-react';
 import { P5_PRESETS, P5Renderer } from '@/lib/p5/P5Renderer';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
+import { compressPNG, shouldCompress, getBase64SizeKB } from '@/lib/utils/imageCompression';
+import { Badge } from '@/components/ui/badge';
 
 export function P5LabTab() {
   const [selectedPresetId, setSelectedPresetId] = useState(P5_PRESETS[0].id);
@@ -19,6 +21,7 @@ export function P5LabTab() {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [traitName, setTraitName] = useState('');
   const [traitWeight, setTraitWeight] = useState(100);
+  const [exportMode, setExportMode] = useState<'static' | 'procedural' | 'hybrid'>('static');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   const { traitClasses, addTrait } = useProjectStore();
@@ -85,7 +88,7 @@ export function P5LabTab() {
     });
   };
 
-  const handleAddTrait = () => {
+  const handleAddTrait = async () => {
     if (!selectedClassId) {
       toast({
         title: 'Select a class',
@@ -104,20 +107,55 @@ export function P5LabTab() {
       return;
     }
 
+    if (!renderedImage && exportMode !== 'procedural') {
+      toast({
+        title: 'Render first',
+        description: 'Please render the sketch before adding as PNG/Hybrid',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const traitClass = traitClasses.find(tc => tc.id === selectedClassId);
-    const source = `p5:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(params))}`;
+    const proceduralSource = `p5:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(params))}`;
+
+    let imageSrc = proceduralSource;
+    
+    // Handle different export modes
+    if (exportMode === 'static' && renderedImage) {
+      // Compress if needed
+      let finalImage = renderedImage;
+      if (shouldCompress(renderedImage, 500)) {
+        try {
+          finalImage = await compressPNG(renderedImage, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 });
+          const originalSize = getBase64SizeKB(renderedImage);
+          const compressedSize = getBase64SizeKB(finalImage);
+          
+          toast({
+            title: 'Image compressed',
+            description: `Size reduced from ${originalSize.toFixed(0)}KB to ${compressedSize.toFixed(0)}KB`,
+          });
+        } catch (error) {
+          console.error('Compression failed:', error);
+        }
+      }
+      imageSrc = finalImage;
+    } else if (exportMode === 'hybrid' && renderedImage) {
+      // Store both: use procedural source with metadata
+      imageSrc = `${proceduralSource}|thumbnail:${renderedImage.substring(0, 100)}`;
+    }
 
     addTrait(selectedClassId, {
       id: `p5-${Date.now()}-${Math.random()}`,
       name: traitName,
-      imageSrc: source,
+      imageSrc,
       weight: traitWeight,
       className: traitClass?.name || '',
     });
 
     toast({
       title: 'Trait added',
-      description: `"${traitName}" added to ${traitClass?.name}`,
+      description: `"${traitName}" added to ${traitClass?.name} (${exportMode})`,
     });
 
     setTraitName('');
@@ -208,6 +246,49 @@ export function P5LabTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <Label>Export Mode</Label>
+              <Select value={exportMode} onValueChange={(v: any) => setExportMode(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="static">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Static PNG</div>
+                        <div className="text-xs text-muted-foreground">Save as image</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="procedural">
+                    <div className="flex items-center gap-2">
+                      <Play className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Procedural</div>
+                        <div className="text-xs text-muted-foreground">Infinite variations</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hybrid">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Hybrid</div>
+                        <div className="text-xs text-muted-foreground">Both PNG + code</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {exportMode === 'static' && 'Stores rendered image (larger file size)'}
+                {exportMode === 'procedural' && 'Stores code reference (generates on demand)'}
+                {exportMode === 'hybrid' && 'Best of both worlds'}
+              </p>
+            </div>
+
+            <div>
               <Label>Trait Class</Label>
               <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                 <SelectTrigger>
@@ -242,9 +323,19 @@ export function P5LabTab() {
               />
             </div>
 
-            <Button onClick={handleAddTrait} disabled={!renderedImage} className="w-full">
+            {renderedImage && exportMode === 'static' && (
+              <Badge variant="outline" className="w-full justify-center">
+                Size: {getBase64SizeKB(renderedImage).toFixed(0)}KB
+              </Badge>
+            )}
+
+            <Button 
+              onClick={handleAddTrait} 
+              disabled={!renderedImage && exportMode !== 'procedural'} 
+              className="w-full"
+            >
               <Plus className="mr-2 h-4 w-4" />
-              Add Trait
+              Add Trait ({exportMode})
             </Button>
           </CardContent>
         </Card>

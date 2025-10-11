@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes, Music, Image, Radio, Zap, Settings } from 'lucide-react';
+import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes, Music, Image, Radio, Zap, Settings, Library } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
 import { QuickStartTour } from './QuickStartTour';
 import { AssetsTab } from './tabs/AssetsTab';
@@ -16,6 +16,7 @@ import { SDLabTab } from './tabs/SDLabTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { PowerUserPanel } from './debug/PowerUserPanel';
 import { SettingsTab } from './tabs/SettingsTab';
+import { TraitLibraryTab } from './tabs/TraitLibraryTab';
 import { useProjectStore } from '@/store/useProjectStore';
 
 interface LayoutProps {
@@ -32,7 +33,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="preview" className="w-full">
-          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-12' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-13' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <FileImage className="w-4 h-4 mr-2" />
               Assets
@@ -66,6 +67,10 @@ export const Layout = ({ children }: LayoutProps) => {
                 <TabsTrigger value="sdlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
                   <Image className="w-4 h-4 mr-2" />
                   SD Lab
+                </TabsTrigger>
+                <TabsTrigger value="traitlibrary" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                  <Library className="w-4 h-4 mr-2" />
+                  Library
                 </TabsTrigger>
                 <TabsTrigger value="performance" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
                   <Radio className="w-4 h-4 mr-2" />
@@ -120,6 +125,9 @@ export const Layout = ({ children }: LayoutProps) => {
               </TabsContent>
               <TabsContent value="sdlab" className="mt-0">
                 <SDLabTab />
+              </TabsContent>
+              <TabsContent value="traitlibrary" className="mt-0">
+                <TraitLibraryTab />
               </TabsContent>
               <TabsContent value="performance" className="mt-0">
                 <PerformanceTab />

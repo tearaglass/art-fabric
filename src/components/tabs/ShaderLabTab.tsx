@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Sparkles, Plus, RefreshCw, Download } from 'lucide-react';
+import { Sparkles, Plus, RefreshCw, Download, Image as ImageIcon, Play } from 'lucide-react';
 import { SHADER_PRESETS, ShaderPreset } from '@/lib/shaders/presets';
 import { TraitRenderer } from '@/lib/rendering/TraitRenderer';
 import { ISFConverter } from '@/lib/shaders/ISFConverter';
 import { useToast } from '@/hooks/use-toast';
+import { compressPNG, shouldCompress, getBase64SizeKB } from '@/lib/utils/imageCompression';
+import { Badge } from '@/components/ui/badge';
 
 export const ShaderLabTab = () => {
   const { traitClasses, addTrait, seed } = useProjectStore();
@@ -19,7 +21,9 @@ export const ShaderLabTab = () => {
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [traitName, setTraitName] = useState('');
   const [traitWeight, setTraitWeight] = useState(100);
+  const [exportMode, setExportMode] = useState<'static' | 'procedural' | 'hybrid'>('static');
   const [uniformValues, setUniformValues] = useState<Record<string, number | number[]>>({});
+  const [renderedImage, setRenderedImage] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderer = useRef(new TraitRenderer());
 
@@ -68,6 +72,9 @@ export const ShaderLabTab = () => {
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         ctx.drawImage(canvas, 0, 0);
+        
+        // Store rendered image for static export
+        setRenderedImage(canvasRef.current.toDataURL('image/png'));
       }
     } catch (error) {
       console.error('Render error:', error);
@@ -79,7 +86,7 @@ export const ShaderLabTab = () => {
     }
   };
 
-  const handleAddTrait = () => {
+  const handleAddTrait = async () => {
     if (!selectedPreset || !selectedClass || !traitName) {
       toast({
         title: 'Missing information',
@@ -89,13 +96,47 @@ export const ShaderLabTab = () => {
       return;
     }
 
+    if (!renderedImage && exportMode !== 'procedural') {
+      toast({
+        title: 'Render first',
+        description: 'Please render the shader before adding as PNG/Hybrid',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const traitClass = traitClasses.find(tc => tc.id === selectedClass);
     if (!traitClass) return;
+
+    const proceduralSource = `webgl:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(uniformValues))}`;
+    let imageSrc = proceduralSource;
+
+    // Handle different export modes
+    if (exportMode === 'static' && renderedImage) {
+      let finalImage = renderedImage;
+      if (shouldCompress(renderedImage, 500)) {
+        try {
+          finalImage = await compressPNG(renderedImage, { maxWidth: 1024, maxHeight: 1024, quality: 0.8 });
+          const originalSize = getBase64SizeKB(renderedImage);
+          const compressedSize = getBase64SizeKB(finalImage);
+          
+          toast({
+            title: 'Image compressed',
+            description: `Size reduced from ${originalSize.toFixed(0)}KB to ${compressedSize.toFixed(0)}KB`,
+          });
+        } catch (error) {
+          console.error('Compression failed:', error);
+        }
+      }
+      imageSrc = finalImage;
+    } else if (exportMode === 'hybrid' && renderedImage) {
+      imageSrc = `${proceduralSource}|thumbnail:${renderedImage.substring(0, 100)}`;
+    }
 
     const trait = {
       id: `${selectedClass}-${Date.now()}`,
       name: traitName,
-      imageSrc: `webgl:${selectedPreset.id}:${encodeURIComponent(JSON.stringify(uniformValues))}`,
+      imageSrc,
       weight: traitWeight,
       className: traitClass.name,
     };
@@ -104,7 +145,7 @@ export const ShaderLabTab = () => {
 
     toast({
       title: 'Shader trait added',
-      description: `"${traitName}" added to ${traitClass.name}`,
+      description: `"${traitName}" added to ${traitClass.name} (${exportMode})`,
     });
 
     setTraitName('');
@@ -312,6 +353,44 @@ export const ShaderLabTab = () => {
           <h2 className="text-xl font-bold mb-4">Add to Collection</h2>
           <div className="space-y-4">
             <div>
+              <Label>Export Mode</Label>
+              <Select value={exportMode} onValueChange={(v: any) => setExportMode(v)}>
+                <SelectTrigger className="bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="static">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Static PNG</div>
+                        <div className="text-xs text-muted-foreground">Save as image</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="procedural">
+                    <div className="flex items-center gap-2">
+                      <Play className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Procedural</div>
+                        <div className="text-xs text-muted-foreground">Infinite variations</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hybrid">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Hybrid</div>
+                        <div className="text-xs text-muted-foreground">Both PNG + code</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label>Trait Class</Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger className="bg-input border-border">
@@ -348,13 +427,19 @@ export const ShaderLabTab = () => {
               />
             </div>
 
+            {renderedImage && exportMode === 'static' && (
+              <Badge variant="outline" className="w-full justify-center">
+                Size: {getBase64SizeKB(renderedImage).toFixed(0)}KB
+              </Badge>
+            )}
+
             <Button
               onClick={handleAddTrait}
-              disabled={!selectedPreset || !selectedClass || !traitName}
+              disabled={!selectedPreset || !selectedClass || !traitName || (!renderedImage && exportMode !== 'procedural')}
               className="w-full gradient-primary"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Shader Trait
+              Add Shader Trait ({exportMode})
             </Button>
           </div>
         </Card>

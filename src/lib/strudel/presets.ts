@@ -91,8 +91,8 @@ export const STRUDEL_PRESETS: StrudelPreset[] = [
   {
     id: 'field_recording',
     name: 'Textural Loop',
-    description: 'Evolving texture',
-    code: 's("birds*4").slow(2).sometimes(rev).gain(0.6)',
+    description: 'Evolving texture with reverb',
+    code: 's("cp*4").slow(2).rev().gain(0.6).room(0.8)',
     bpm: 80,
     category: 'ambient'
   },
@@ -100,7 +100,7 @@ export const STRUDEL_PRESETS: StrudelPreset[] = [
     id: 'glitch',
     name: 'Glitch Pattern',
     description: 'Glitchy, stuttering rhythm',
-    code: 's("bd sd").sometimes(fast(2)).sometimes(slow(2)).degradeBy(0.3)',
+    code: 's("bd sd").fast(2).sometimes(rev).degradeBy(0.3)',
     bpm: 160,
     category: 'experimental'
   },
@@ -123,8 +123,8 @@ export const STRUDEL_PRESETS: StrudelPreset[] = [
   {
     id: 'sample_chop',
     name: 'Sample Chopping',
-    description: 'Chopped sample manipulation',
-    code: 's("breaks165*8").chop(8).sometimes(rev)',
+    description: 'Chopped beat manipulation',
+    code: 's("bd*8").chop(8).rev()',
     bpm: 165,
     category: 'drums'
   }

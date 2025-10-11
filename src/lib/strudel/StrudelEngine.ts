@@ -1,7 +1,8 @@
 import { repl, Pattern } from '@strudel/core';
-import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
+import { initAudioOnFirstClick, getAudioContext, webaudioOutput, samples } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
+import { DEFAULT_SAMPLE_MAP_URL } from './sampleMaps';
 
 export interface StrudelPattern {
   code: string;
@@ -14,6 +15,7 @@ export class StrudelEngine {
   private audioContext: AudioContext | null = null;
   private isInitialized = false;
   private currentPattern: Pattern | null = null;
+  private replInstance: any = null;
 
   private constructor() {}
 
@@ -34,13 +36,18 @@ export class StrudelEngine {
       await initAudioOnFirstClick();
       this.audioContext = getAudioContext();
       
-      // Create scheduler with proper configuration
-      const replInstance = repl({
+      // Create REPL instance with proper configuration
+      this.replInstance = repl({
         defaultOutput: webaudioOutput,
         getTime: () => this.audioContext?.currentTime || 0,
       });
 
-      this.scheduler = replInstance.scheduler;
+      this.scheduler = this.replInstance.scheduler;
+      
+      // Load default sample map for bd, sd, hh, cp, etc.
+      console.log('[Strudel] Loading default sample map...');
+      await samples(DEFAULT_SAMPLE_MAP_URL);
+      console.log('[Strudel] Sample map loaded');
       
       console.log('[Strudel] Audio context initialized:', this.audioContext?.state);
       console.log('[Strudel] Scheduler created');
@@ -59,17 +66,12 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Evaluating pattern:', code);
 
-      // Evaluate the code to get a pattern
-      // Using Function constructor to evaluate the pattern code safely
-      const evaluateCode = new Function(
-        's', 'note', 'sound', 'stack', 'cat', 'seq', 'fastcat', 'slowcat',
-        `return ${code}`
-      );
+      // Use REPL's built-in evaluator for full Strudel function support
+      if (!this.replInstance) {
+        throw new Error('REPL not initialized');
+      }
 
-      // Import pattern functions from @strudel/core
-      const { s, note, sound, stack, cat, seq, fastcat, slowcat } = await import('@strudel/core');
-      
-      const pattern = evaluateCode(s, note, sound, stack, cat, seq, fastcat, slowcat);
+      const pattern = await this.replInstance.eval(code);
       
       if (!pattern) {
         throw new Error('Pattern evaluation returned null');
@@ -79,14 +81,35 @@ export class StrudelEngine {
 
       // Set pattern on scheduler
       if (this.scheduler) {
-        this.scheduler.setPattern(pattern, true); // true = evaluate immediately
+        this.scheduler.setPattern(pattern, true);
         console.log('[Strudel] Pattern set on scheduler');
       }
 
       console.log('[Strudel] Pattern evaluated successfully');
     } catch (error) {
       console.error('[Strudel] Pattern evaluation error:', error);
-      throw new Error(`Pattern error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Provide helpful error messages
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMsg.includes('not defined') || errorMsg.includes('is not a function')) {
+        throw new Error(`Function not found: ${errorMsg}. Make sure you're using valid Strudel functions.`);
+      }
+      if (errorMsg.includes('unknown') || errorMsg.includes('sample')) {
+        throw new Error(`Unknown sample: ${errorMsg}. Try loading the default sample map or use known samples like bd, sd, hh, cp.`);
+      }
+      
+      throw new Error(`Pattern error: ${errorMsg}`);
+    }
+  }
+
+  async loadSampleMap(url: string) {
+    try {
+      console.log('[Strudel] Loading sample map:', url);
+      await samples(url);
+      console.log('[Strudel] Sample map loaded successfully');
+    } catch (error) {
+      console.error('[Strudel] Failed to load sample map:', error);
+      throw error;
     }
   }
 

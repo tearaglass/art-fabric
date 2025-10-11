@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { strudelEngine } from '@/lib/strudel/StrudelEngine';
 import { STRUDEL_PRESETS, MINI_NOTATION_EXAMPLES, StrudelPreset } from '@/lib/strudel/presets';
+import { SAMPLE_MAPS, DEFAULT_SAMPLE_MAP_URL } from '@/lib/strudel/sampleMaps';
 
 export function StrudelLabTab() {
   const { toast } = useToast();
@@ -32,6 +34,7 @@ export function StrudelLabTab() {
   const [volume, setVolume] = useState(0.8);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSampleMap, setSelectedSampleMap] = useState<string>('default');
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -76,9 +79,50 @@ export function StrudelLabTab() {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Pattern error';
       setError(errorMsg);
+      
+      // Check if it's a sample-related error
+      const isUnknownSample = errorMsg.toLowerCase().includes('unknown') || 
+                              errorMsg.toLowerCase().includes('sample');
+      
       toast({
         title: 'Pattern Error',
         description: errorMsg,
+        variant: 'destructive',
+        action: isUnknownSample ? (
+          <Button
+            size="sm"
+            onClick={async () => {
+              await strudelEngine.loadSampleMap(DEFAULT_SAMPLE_MAP_URL);
+              toast({
+                title: 'Sample map loaded',
+                description: 'Default samples are now available',
+              });
+            }}
+          >
+            Load Default Samples
+          </Button>
+        ) : undefined,
+      });
+    }
+  };
+
+  const handleLoadSampleMap = async (mapId: string) => {
+    const map = SAMPLE_MAPS.find(m => m.id === mapId);
+    if (!map) return;
+
+    try {
+      await strudelEngine.loadSampleMap(map.url);
+      setSelectedSampleMap(mapId);
+      localStorage.setItem('strudel-sample-map', mapId);
+      
+      toast({
+        title: 'Sample map loaded',
+        description: `${map.name} samples are now available`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to load sample map',
+        description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive',
       });
     }
@@ -238,6 +282,24 @@ export function StrudelLabTab() {
                 step={0.01}
               />
             </div>
+          </div>
+
+          <Separator orientation="vertical" className="h-8" />
+
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">Sample Map</Label>
+            <Select value={selectedSampleMap} onValueChange={handleLoadSampleMap}>
+              <SelectTrigger className="w-32 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SAMPLE_MAPS.map(map => (
+                  <SelectItem key={map.id} value={map.id} className="text-xs">
+                    {map.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </Card>
