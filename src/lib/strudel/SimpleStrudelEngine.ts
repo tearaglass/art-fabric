@@ -23,9 +23,6 @@ class SimpleStrudelEngine {
       getTime: () => ctx?.currentTime || 0,
     });
     
-    // Diagnostics
-    console.log('[SimpleStrudel] REPL keys:', Object.keys(this.replInstance || {}));
-    console.log('[SimpleStrudel] Has eval:', typeof this.replInstance?.eval === 'function', 'Has scheduler:', !!this.replInstance?.scheduler);
     
     // Load default samples (non-blocking)
     try {
@@ -40,8 +37,7 @@ class SimpleStrudelEngine {
   
   async evaluate(code: string) {
     if (!this.replInstance) await this.init();
-    console.log('[SimpleStrudel] Evaluating:', code);
-    return this.replInstance.evaluate(code);
+    await this.replInstance.setCode(code);
   }
   
   start() {
