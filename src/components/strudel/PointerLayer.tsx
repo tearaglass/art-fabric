@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { strudelBus } from '@/lib/strudel/bus';
+import { Button } from '@/components/ui/button';
+import { Hand, HandMetal } from 'lucide-react';
 
 const MODES = ['dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'ionian', 'harmonic minor', 'melodic minor', 'locrian'];
 const ROOTS = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
@@ -13,6 +15,7 @@ interface GesturePoint {
 
 export function PointerLayer() {
   const { currentPatch, updatePatch } = useProjectStore();
+  const [enabled, setEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [gesture, setGesture] = useState<GesturePoint[]>([]);
   const [playbackGesture, setPlaybackGesture] = useState<GesturePoint[]>([]);
@@ -20,6 +23,8 @@ export function PointerLayer() {
   const recordTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
+    
     const handlePointerMove = (e: PointerEvent) => {
       const x = e.clientX / window.innerWidth;
       const y = e.clientY / window.innerHeight;
@@ -105,11 +110,11 @@ export function PointerLayer() {
       window.removeEventListener('dblclick', handleDoubleClick);
       if (recordTimeoutRef.current) clearTimeout(recordTimeoutRef.current);
     };
-  }, [isRecording, gesture, currentPatch.scale, updatePatch]);
+  }, [enabled, isRecording, gesture, currentPatch.scale, updatePatch]);
 
   // Playback loop
   useEffect(() => {
-    if (playbackGesture.length === 0) return;
+    if (!enabled || playbackGesture.length === 0) return;
 
     let animFrame = 0;
     const startTime = performance.now();
@@ -153,10 +158,24 @@ export function PointerLayer() {
     animFrame = requestAnimationFrame(loop);
 
     return () => cancelAnimationFrame(animFrame);
-  }, [playbackGesture, currentPatch.macros, updatePatch]);
+  }, [enabled, playbackGesture, currentPatch.macros, updatePatch]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-50">
+    <>
+      {/* Toggle button */}
+      <Button
+        size="sm"
+        variant={enabled ? 'default' : 'outline'}
+        className="fixed bottom-4 right-4 z-50 gap-2"
+        onClick={() => setEnabled(!enabled)}
+      >
+        {enabled ? <Hand className="w-4 h-4" /> : <HandMetal className="w-4 h-4" />}
+        {enabled ? 'XY Pad ON' : 'XY Pad OFF'}
+      </Button>
+
+      {!enabled && null}
+      {enabled && (
+        <div className="fixed inset-0 pointer-events-none z-40">
       {/* 3x3 grid overlay (visible on press) */}
       <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-0 hover:opacity-30 transition-opacity pointer-events-auto">
         {MODES.map((mode, i) => (
@@ -183,5 +202,7 @@ export function PointerLayer() {
         </div>
       )}
     </div>
+      )}
+    </>
   );
 }

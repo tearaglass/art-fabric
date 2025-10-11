@@ -8,6 +8,8 @@ import { StrudelPatternTab } from './StrudelPatternTab';
 import { SDLabTab } from './SDLabTab';
 import { SynthPanel } from '@/components/strudel/SynthPanel';
 import { HotspotChords } from '@/components/strudel/HotspotChords';
+import { StrudelScope } from '@/components/strudel/StrudelScope';
+import { PromptComposer } from '@/components/strudel/PromptComposer';
 
 export function LabsTab() {
   return (
@@ -54,7 +56,11 @@ export function LabsTab() {
                 <SynthPanel />
                 <div className="space-y-4">
                   <StrudelPatternTab />
-                  <HotspotChords />
+                  <StrudelScope />
+                  <div className="grid grid-cols-2 gap-4">
+                    <HotspotChords />
+                    <PromptComposer />
+                  </div>
                 </div>
               </div>
             </div>
