@@ -257,10 +257,6 @@ export const PerformanceTab = () => {
               Export Bundle
             </Button>
           </div>
-                </>
-              )}
-            </Button>
-          </div>
 
           {/* BPM Sync Controls */}
           <Card className="bg-muted/50">
