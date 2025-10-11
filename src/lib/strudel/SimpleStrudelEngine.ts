@@ -41,7 +41,7 @@ class SimpleStrudelEngine {
   async evaluate(code: string) {
     if (!this.replInstance) await this.init();
     console.log('[SimpleStrudel] Evaluating:', code);
-    return this.replInstance.eval(code);
+    return this.replInstance.evaluate(code);
   }
   
   start() {
