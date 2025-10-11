@@ -1,7 +1,5 @@
 import { repl, evaluate } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
-import '@strudel/mini';
-import '@strudel/tonal';
 
 class SimpleStrudelEngine {
   private replInstance: any = null;
