@@ -1,7 +1,9 @@
 /**
  * MacroSystem - Central macro state & broadcast
- * Phase 5: Standalone now, will integrate into CosmosBus Phase 4
+ * Phase 4: Now integrated with CosmosBus
  */
+
+import { cosmosBus } from '@/lib/events/CosmosBus';
 
 type MacroID = "A" | "B" | "C" | "D";
 
@@ -38,14 +40,14 @@ class MacroSystem {
   }
 
   // Set a single macro
-  set(id: MacroID, value: number): void {
+  set(id: MacroID, value: number, source: 'ui' | 'midi' | 'osc' | 'automation' = 'ui'): void {
     if (this.locks.has(id)) return; // respect locks
     
     const clamped = Math.max(0, Math.min(1, value));
     if (this.state[id] === clamped) return;
     
     this.state[id] = clamped;
-    this.emit(id, clamped);
+    this.emit(id, clamped, source);
   }
 
   // Set multiple macros at once
@@ -161,8 +163,24 @@ class MacroSystem {
     this.locks.clear();
   }
 
-  private emit(id: MacroID, value: number): void {
+  private emit(id: MacroID, value: number, source: 'ui' | 'midi' | 'osc' | 'automation' = 'ui'): void {
+    // Notify local listeners
     this.listeners.forEach(fn => fn(id, value, { ...this.state }));
+    
+    // Emit to CosmosBus
+    const keyMap: Record<MacroID, string> = {
+      A: "Tone",
+      B: "Movement",
+      C: "Space",
+      D: "Grit",
+    };
+    
+    cosmosBus.emit({
+      type: "macro/changed",
+      key: keyMap[id],
+      value,
+      source,
+    });
   }
 
   // For CosmosBus migration: expose state getter

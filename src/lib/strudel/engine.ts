@@ -1,5 +1,6 @@
 import { initStrudel, evaluate, hush } from '@strudel/web';
 import { strudelBus } from './bus';
+import { cosmosBus } from '@/lib/events/CosmosBus';
 
 export class StrudelEngine {
   private initialized = false;
@@ -48,7 +49,16 @@ export class StrudelEngine {
       // Start transport ticks
       this.startTransport();
       
+      // Emit to both buses for backward compat
       strudelBus.emit({ type: "transport", state: "start" });
+      cosmosBus.emit({ 
+        type: "transport/start", 
+        bpm: this.currentBpm, 
+        timestamp: Date.now() 
+      });
+      
+      // Start audio analysis
+      this.startAudioAnalysis();
     } catch (err) {
       console.error('[StrudelEngine] Eval error:', err);
       throw new Error(err instanceof Error ? err.message : 'Pattern evaluation failed');
@@ -58,13 +68,20 @@ export class StrudelEngine {
   stop() {
     hush();
     this.stopTransport();
+    this.stopAudioAnalysis();
+    
+    // Emit to both buses
     strudelBus.emit({ type: "transport", state: "stop" });
+    cosmosBus.emit({ type: "transport/stop", timestamp: Date.now() });
   }
 
   setBpm(bpm: number) {
     this.currentBpm = bpm;
     const cps = bpm / 60;
+    
+    // Emit to both buses
     strudelBus.emit({ type: "tempo", bpm, cps });
+    cosmosBus.emit({ type: "transport/tempo", bpm, cps });
     
     // Restart transport with new tempo
     if (this.tickInterval !== null) {
@@ -88,12 +105,24 @@ export class StrudelEngine {
       this.currentTick16++;
       const bar = Math.floor(this.currentTick16 / 16);
       const beat = Math.floor((this.currentTick16 % 16) / 4);
+      const tick16 = this.currentTick16 % 16;
+      const phase = (tick16 % 4) / 4; // 0-1 within current beat
       
+      // Emit to legacy bus
       strudelBus.emit({
         type: "beat",
         bar,
         beat,
-        tick16: this.currentTick16 % 16,
+        tick16,
+      });
+      
+      // Emit to CosmosBus with enhanced data
+      cosmosBus.emit({
+        type: "transport/tick",
+        bar,
+        beat,
+        tick16,
+        phase,
       });
     }, interval);
   }
@@ -107,6 +136,83 @@ export class StrudelEngine {
 
   isInitialized() {
     return this.initialized;
+  }
+
+  private audioAnalysisRAF: number | null = null;
+
+  private startAudioAnalysis() {
+    this.stopAudioAnalysis();
+    
+    if (!this.analyser) return;
+    
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const freqArray = new Uint8Array(bufferLength);
+    
+    const analyze = () => {
+      if (!this.analyser) return;
+      
+      // Time-domain data for RMS/peak
+      this.analyser.getByteTimeDomainData(dataArray);
+      
+      let sum = 0;
+      let peak = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const normalized = (dataArray[i] - 128) / 128;
+        sum += normalized * normalized;
+        peak = Math.max(peak, Math.abs(normalized));
+      }
+      const rms = Math.sqrt(sum / bufferLength);
+      
+      // Frequency data for spectrum
+      this.analyser.getByteFrequencyData(freqArray);
+      
+      // Split into low/mid/high bands
+      const third = Math.floor(bufferLength / 3);
+      let low = 0, mid = 0, high = 0;
+      
+      for (let i = 0; i < third; i++) {
+        low += freqArray[i];
+      }
+      for (let i = third; i < third * 2; i++) {
+        mid += freqArray[i];
+      }
+      for (let i = third * 2; i < bufferLength; i++) {
+        high += freqArray[i];
+      }
+      
+      // Normalize to 0-1
+      low = low / (third * 255);
+      mid = mid / (third * 255);
+      high = high / (third * 255);
+      
+      // Emit FFT event
+      cosmosBus.emit({
+        type: "audio/fft",
+        bins: new Float32Array(freqArray.map(v => v / 255)),
+        rms,
+        peak,
+      });
+      
+      // Emit spectrum event
+      cosmosBus.emit({
+        type: "audio/spectrum",
+        low,
+        mid,
+        high,
+      });
+      
+      this.audioAnalysisRAF = requestAnimationFrame(analyze);
+    };
+    
+    this.audioAnalysisRAF = requestAnimationFrame(analyze);
+  }
+
+  private stopAudioAnalysis() {
+    if (this.audioAnalysisRAF !== null) {
+      cancelAnimationFrame(this.audioAnalysisRAF);
+      this.audioAnalysisRAF = null;
+    }
   }
 }
 

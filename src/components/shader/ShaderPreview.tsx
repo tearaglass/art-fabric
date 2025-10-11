@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { strudelBus } from '@/lib/strudel/bus';
+import { cosmosBus } from '@/lib/events/CosmosBus';
 
 type Uniforms = Record<string, number | [number, number] | [number, number, number] | [number, number, number, number]>;
 
@@ -75,15 +75,30 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
     let raf = 0;
     let program: WebGLProgram | null = null;
     let mouse: [number, number] = [0.5, 0.5];
-    let bpm = 120;
-    let macros: [number, number, number, number] = [0.6, 0.5, 0.3, 0.1];
+    
+    // Get initial state from CosmosBus
+    const initialState = cosmosBus.getState();
+    let bpm = initialState.bpm;
+    let macros: [number, number, number, number] = [
+      initialState.macros.Tone ?? 0.6,
+      initialState.macros.Movement ?? 0.5,
+      initialState.macros.Space ?? 0.3,
+      initialState.macros.Grit ?? 0.1,
+    ];
+    let spectrum = initialState.audioSpectrum;
 
-    const unsubBus = strudelBus.on((msg) => {
-      if (msg.type === 'tempo') bpm = msg.bpm;
-      if (msg.type === 'macro') {
-        const idx = { Tone: 0, Movement: 1, Space: 2, Grit: 3 }[msg.key];
-        if (idx !== undefined) macros[idx] = msg.value;
-      }
+    // Subscribe to CosmosBus events
+    const unsubTempo = cosmosBus.on('transport/tempo', (event) => {
+      bpm = event.bpm;
+    });
+    
+    const unsubMacro = cosmosBus.on('macro/changed', (event) => {
+      const idx = { Tone: 0, Movement: 1, Space: 2, Grit: 3 }[event.key];
+      if (idx !== undefined) macros[idx] = event.value;
+    });
+    
+    const unsubSpectrum = cosmosBus.on('audio/spectrum', (event) => {
+      spectrum = event;
     });
 
     // Mouse tracking
@@ -191,7 +206,9 @@ export function ShaderPreview({ fragmentSource, seed = 0.1234 }: ShaderPreviewPr
 
     return () => {
       cancelAnimationFrame(raf);
-      unsubBus();
+      unsubTempo();
+      unsubMacro();
+      unsubSpectrum();
       canvas.removeEventListener('pointermove', handlePointerMove);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };

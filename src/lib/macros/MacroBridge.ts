@@ -1,10 +1,11 @@
 /**
- * MacroBridge - Bridge MacroSystem to StrudelBus
- * Temporary until CosmosBus Phase 4 unifies everything
+ * MacroBridge - Bridge MacroSystem ↔ CosmosBus ↔ StrudelBus
+ * Phase 4: Full bidirectional integration
  */
 
 import { macroSystem, MacroID } from './MacroSystem';
 import { strudelBus } from '@/lib/strudel/bus';
+import { cosmosBus } from '@/lib/events/CosmosBus';
 
 let bridgeActive = false;
 
@@ -28,7 +29,23 @@ export function initMacroBridge() {
     });
   });
 
-  console.log('[MacroBridge] Connected MacroSystem → StrudelBus');
+  // Listen for external macro changes from CosmosBus
+  cosmosBus.on('macro/changed', (event) => {
+    const idMap: Record<string, MacroID> = {
+      Tone: "A",
+      Movement: "B",
+      Space: "C",
+      Grit: "D",
+    };
+    
+    const id = idMap[event.key];
+    if (id && event.source !== 'ui') {
+      // Only apply external changes (avoid feedback loop)
+      macroSystem.set(id, event.value, event.source);
+    }
+  });
+
+  console.log('[MacroBridge] Connected MacroSystem ↔ CosmosBus ↔ StrudelBus');
 }
 
 export function setMacroFromStrudelBus(key: "Tone" | "Movement" | "Space" | "Grit", value: number) {
