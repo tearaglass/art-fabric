@@ -58,6 +58,11 @@ export type CosmosEvent =
   | { type: 'fx/applied'; fxName: string; params: Record<string, any> }
   | { type: 'mod/route'; source: string; target: string; amount: number }
   
+  // Visual feedback sources (for cross-lab routing)
+  | { type: 'shader/metrics'; layerId: string; brightness: number; hue: number; edge: number }
+  | { type: 'p5/interaction'; layerId: string; x: number; y: number; speed: number }
+  | { type: 'p5/metrics'; layerId: string; particleCount: number }
+  
   // System
   | { type: 'system/error'; module: string; error: string; trace?: any }
   | { type: 'system/warning'; module: string; message: string };
@@ -85,6 +90,10 @@ export interface CosmosState {
   // Macros (global performance parameters)
   macros: Record<string, number>;
   
+  // Visual feedback sources (for cross-lab routing)
+  shader: Record<string, { brightness: number; hue: number; edge: number }>;
+  p5: Record<string, { cursorX: number; cursorY: number; speed: number; particleCount: number }>;
+  
   // RNG
   seed: string;
   rng: seedrandom.PRNG;
@@ -106,6 +115,7 @@ class CosmosBus {
   
   constructor() {
     // Initialize state
+    const initialSeed = Math.random().toString(36).substring(7);
     this.state = {
       isPlaying: false,
       bpm: 120,
@@ -122,9 +132,16 @@ class CosmosBus {
         Movement: 0.5,
         Space: 0.5,
         Grit: 0.5,
+        // Aliased for easier access (A=Tone, B=Movement, C=Space, D=Grit)
+        A: 0.5,
+        B: 0.5,
+        C: 0.5,
+        D: 0.5,
       },
-      seed: Math.random().toString(36).substring(7),
-      rng: seedrandom(this.state?.seed || 'default'),
+      shader: {},
+      p5: {},
+      seed: initialSeed,
+      rng: seedrandom(initialSeed),
       frameCount: 0,
       fps: 60,
       deltaTime: 16.67,
@@ -236,10 +253,44 @@ class CosmosBus {
         
       case 'macro/changed':
         this.state.macros[event.key] = event.value;
+        // Sync aliased macro values
+        if (event.key === 'Tone') this.state.macros.A = event.value;
+        if (event.key === 'Movement') this.state.macros.B = event.value;
+        if (event.key === 'Space') this.state.macros.C = event.value;
+        if (event.key === 'Grit') this.state.macros.D = event.value;
+        if (event.key === 'A') this.state.macros.Tone = event.value;
+        if (event.key === 'B') this.state.macros.Movement = event.value;
+        if (event.key === 'C') this.state.macros.Space = event.value;
+        if (event.key === 'D') this.state.macros.Grit = event.value;
         break;
         
       case 'macro/snapshot':
         this.state.macros = { ...event.snapshot };
+        break;
+        
+      case 'shader/metrics':
+        if (!this.state.shader[event.layerId]) {
+          this.state.shader[event.layerId] = { brightness: 0, hue: 0, edge: 0 };
+        }
+        this.state.shader[event.layerId].brightness = event.brightness;
+        this.state.shader[event.layerId].hue = event.hue;
+        this.state.shader[event.layerId].edge = event.edge;
+        break;
+        
+      case 'p5/interaction':
+        if (!this.state.p5[event.layerId]) {
+          this.state.p5[event.layerId] = { cursorX: 0, cursorY: 0, speed: 0, particleCount: 0 };
+        }
+        this.state.p5[event.layerId].cursorX = event.x;
+        this.state.p5[event.layerId].cursorY = event.y;
+        this.state.p5[event.layerId].speed = event.speed;
+        break;
+        
+      case 'p5/metrics':
+        if (!this.state.p5[event.layerId]) {
+          this.state.p5[event.layerId] = { cursorX: 0, cursorY: 0, speed: 0, particleCount: 0 };
+        }
+        this.state.p5[event.layerId].particleCount = event.particleCount;
         break;
         
       case 'rng/seedChanged':
