@@ -11,13 +11,30 @@ class SimpleStrudelEngine {
     await initAudioOnFirstClick();
     const ctx = getAudioContext();
     
+    // Explicitly resume audio context
+    try {
+      await ctx?.resume?.();
+    } catch (e) {
+      console.warn('[SimpleStrudel] Audio context resume failed:', e);
+    }
+    
     this.replInstance = repl({
       defaultOutput: webaudioOutput,
       getTime: () => ctx?.currentTime || 0,
     });
     
-    // Load default samples
-    await samples('https://raw.githubusercontent.com/felixroos/dough-samples/main/EmuSP12.json');
+    // Diagnostics
+    console.log('[SimpleStrudel] REPL keys:', Object.keys(this.replInstance || {}));
+    console.log('[SimpleStrudel] Has eval:', typeof this.replInstance?.eval === 'function', 'Has scheduler:', !!this.replInstance?.scheduler);
+    
+    // Load default samples (non-blocking)
+    try {
+      await samples('https://raw.githubusercontent.com/felixroos/dough-samples/main/EmuSP12.json');
+      console.log('[SimpleStrudel] Samples loaded');
+    } catch (e) {
+      console.warn('[SimpleStrudel] Sample map failed to load. Drums may be silent.', e);
+    }
+    
     console.log('[SimpleStrudel] Ready');
   }
   

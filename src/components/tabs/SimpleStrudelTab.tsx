@@ -7,7 +7,7 @@ import { simpleEngine } from '@/lib/strudel/SimpleStrudelEngine';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SimpleStrudelTab() {
-  const [code, setCode] = useState('s("bd sd")');
+  const [code, setCode] = useState('note("c3 e3 g3").s("sine")');
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -65,9 +65,9 @@ export default function SimpleStrudelTab() {
 
         <div className="text-sm text-muted-foreground space-y-1">
           <p><strong>Examples:</strong></p>
-          <p>• <code>s("bd sd")</code> - kick and snare</p>
-          <p>• <code>s("bd*4")</code> - 4 kicks per cycle</p>
-          <p>• <code>note("c e g").s("sine")</code> - synth chord</p>
+          <p>• <code>note("c3 e3 g3").s("sine")</code> - synth chord (no samples)</p>
+          <p>• <code>s("bd sd")</code> - kick and snare (requires samples)</p>
+          <p>• <code>s("bd*4")</code> - 4 kicks per cycle (requires samples)</p>
         </div>
       </CardContent>
     </Card>
