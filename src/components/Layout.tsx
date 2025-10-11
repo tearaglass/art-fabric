@@ -4,9 +4,7 @@ import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Radio, Zap, Set
 import { ProjectHeader } from './ProjectHeader';
 import { QuickStartTour } from './QuickStartTour';
 import { ErrorBoundary } from './ErrorBoundary';
-import { AssetsTab } from './tabs/AssetsTab';
-import { RulesTab } from './tabs/RulesTab';
-import { DistributionTab } from './tabs/DistributionTab';
+import CollectionTab from './tabs/CollectionTab';
 import { FXBuilderTab } from './tabs/FXBuilderTab';
 import { PreviewTab } from './tabs/PreviewTab';
 import { ExportTab } from './tabs/ExportTab';
@@ -33,18 +31,10 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="preview" className="w-full">
-          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-10' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
-            <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-              <FileImage className="w-4 h-4 mr-2" />
-              Assets
-            </TabsTrigger>
-            <TabsTrigger value="rules" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-              <GitBranch className="w-4 h-4 mr-2" />
-              Rules
-            </TabsTrigger>
-            <TabsTrigger value="distribution" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Distribution
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-8' : 'grid-cols-5'} mb-6 bg-card border border-border`}>
+            <TabsTrigger value="collection" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              <Library className="w-4 h-4 mr-2" />
+              Collection
             </TabsTrigger>
             <TabsTrigger value="fx" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <Wand2 className="w-4 h-4 mr-2" />
@@ -57,7 +47,7 @@ export const Layout = ({ children }: LayoutProps) => {
                   Labs
                 </TabsTrigger>
                 <TabsTrigger value="traitlibrary" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-                  <Library className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-4 h-4 mr-2" />
                   Library
                 </TabsTrigger>
                 <TabsTrigger value="performance" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
@@ -84,21 +74,9 @@ export const Layout = ({ children }: LayoutProps) => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="assets" className="mt-0">
+          <TabsContent value="collection" className="mt-0">
             <ErrorBoundary>
-              <AssetsTab />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="rules" className="mt-0">
-            <ErrorBoundary>
-              <RulesTab />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="distribution" className="mt-0">
-            <ErrorBoundary>
-              <DistributionTab />
+              <CollectionTab />
             </ErrorBoundary>
           </TabsContent>
 
