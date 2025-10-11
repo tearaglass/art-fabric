@@ -1,4 +1,4 @@
-import { repl } from '@strudel/repl';
+import { repl } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput } from '@strudel/webaudio';
 
 class SimpleStrudelEngine {

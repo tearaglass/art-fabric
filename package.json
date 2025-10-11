@@ -42,7 +42,6 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@strudel/core": "^1.2.4",
     "@strudel/mini": "^1.2.4",
-    "@strudel/repl": "^1.2.6",
     "@strudel/tonal": "^1.2.4",
     "@strudel/webaudio": "^1.2.5",
     "@supabase/supabase-js": "^2.75.0",
