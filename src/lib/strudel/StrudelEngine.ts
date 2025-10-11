@@ -1,4 +1,5 @@
-import { repl, Pattern } from '@strudel/core';
+import { repl } from '@strudel/repl';
+import { Pattern } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput, samples } from '@strudel/webaudio';
 import { DEFAULT_SAMPLE_MAP_URL } from './sampleMaps';
 
