@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sparkles, Shapes, Music, Image } from 'lucide-react';
 import { ShaderLabTab } from './ShaderLabTab';
 import { P5LabTab } from './P5LabTab';
-import { StrudelMinimalTab } from './StrudelMinimalTab';
+import { StrudelPatternTab } from './StrudelPatternTab';
 import { SDLabTab } from './SDLabTab';
 
 export function LabsTab() {
@@ -47,7 +47,7 @@ export function LabsTab() {
           </TabsContent>
 
           <TabsContent value="strudel" className="mt-0">
-            <StrudelMinimalTab />
+            <StrudelPatternTab />
           </TabsContent>
 
           <TabsContent value="sd" className="mt-0">
