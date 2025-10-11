@@ -1,21 +1,34 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Play, Square } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Play, Square, Code, Wand2 } from 'lucide-react';
 import { patternEngine } from '@/lib/strudel/PatternEngine';
 import { useToast } from '@/hooks/use-toast';
+import { useProjectStore } from '@/store/useProjectStore';
+import { compileStrudel } from '@/lib/strudel/compile';
 
 export function StrudelPatternTab() {
-  const [code, setCode] = useState('note("c3 e3 g3").s("sine")');
+  const { currentPatch } = useProjectStore();
+  const [advancedMode, setAdvancedMode] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Auto-compile code from patch
+  const compiledCode = useMemo(() => {
+    return compileStrudel(currentPatch);
+  }, [currentPatch]);
+
+  // Use manual code in advanced mode, otherwise use auto-compiled
+  const activeCode = advancedMode ? manualCode : compiledCode;
+
   const handlePlay = async () => {
     try {
       setError(null);
-      await patternEngine.playPattern(code);
+      await patternEngine.playPattern(activeCode);
       setIsPlaying(true);
       toast({ description: 'Pattern playing' });
     } catch (err) {
@@ -34,11 +47,42 @@ export function StrudelPatternTab() {
     setError(null);
   };
 
+  const toggleAdvancedMode = () => {
+    if (!advancedMode) {
+      // Switching to advanced: copy compiled code to manual editor
+      setManualCode(compiledCode);
+    }
+    setAdvancedMode(!advancedMode);
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Strudel - Phase 3: Pattern Evaluation</CardTitle>
-        <CardDescription>Testing Strudel REPL and pattern playback</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Code className="w-5 h-5" />
+              Live Strudel Code
+              {!advancedMode && (
+                <Badge variant="secondary" className="ml-2">Auto-Generated</Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              {advancedMode 
+                ? 'Manual editing enabled - changes won\'t affect controls' 
+                : 'Code updates automatically when you change controls'}
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleAdvancedMode}
+            className="gap-2"
+          >
+            <Wand2 className="w-4 h-4" />
+            {advancedMode ? 'Auto Mode' : 'Advanced'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2 items-center">
@@ -54,10 +98,11 @@ export function StrudelPatternTab() {
         </div>
 
         <Textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder='Try: note("c3 e3 g3").s("sine")'
-          className="font-mono min-h-[200px]"
+          value={activeCode}
+          onChange={(e) => advancedMode && setManualCode(e.target.value)}
+          readOnly={!advancedMode}
+          placeholder='Adjust controls to generate code...'
+          className={`font-mono min-h-[200px] text-xs ${!advancedMode ? 'bg-muted/30' : ''}`}
         />
 
         {error && (
@@ -69,15 +114,21 @@ export function StrudelPatternTab() {
           </div>
         )}
 
-        <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
-          <p className="font-medium">Try these examples:</p>
-          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li><code>note("c e g").s("triangle")</code> - simple chord</li>
-            <li><code>note("c d e f").s("sawtooth").slow(2)</code> - slow melody</li>
-            <li><code>note("c3*4").s("sine").fast(2)</code> - repetition</li>
-            <li><code>s("bd sd").speed(2)</code> - drum pattern (needs samples)</li>
-          </ul>
-        </div>
+        {!advancedMode && (
+          <div className="p-4 bg-muted/50 rounded-lg space-y-2 text-sm border border-border">
+            <p className="font-medium flex items-center gap-2">
+              <Code className="w-4 h-4" />
+              Live Control Mapping
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs">
+              <li>Move any slider or knob to see code update instantly</li>
+              <li>BPM → <code>cps()</code> value</li>
+              <li>Filter → <code>.lp()</code> or <code>.hp()</code> frequency</li>
+              <li>Waveshape → <code>s("sine")</code>, <code>s("saw")</code>, etc.</li>
+              <li>Switch to Advanced mode for manual editing</li>
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
