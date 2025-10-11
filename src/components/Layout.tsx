@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Sparkles, Shapes, Music, Image, Radio, Zap, Settings, Library } from 'lucide-react';
+import { FileImage, GitBranch, BarChart3, Wand2, Play, Download, Radio, Zap, Settings, Library, Sparkles } from 'lucide-react';
 import { ProjectHeader } from './ProjectHeader';
 import { QuickStartTour } from './QuickStartTour';
 import { AssetsTab } from './tabs/AssetsTab';
@@ -9,10 +9,7 @@ import { DistributionTab } from './tabs/DistributionTab';
 import { FXBuilderTab } from './tabs/FXBuilderTab';
 import { PreviewTab } from './tabs/PreviewTab';
 import { ExportTab } from './tabs/ExportTab';
-import { ShaderLabTab } from './tabs/ShaderLabTab';
-import { P5LabTab } from './tabs/P5LabTab';
-import { StrudelLabTab } from './tabs/StrudelLabTab';
-import { SDLabTab } from './tabs/SDLabTab';
+import { LabsTab } from './tabs/LabsTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { PowerUserPanel } from './debug/PowerUserPanel';
 import { SettingsTab } from './tabs/SettingsTab';
@@ -33,7 +30,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="preview" className="w-full">
-          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-13' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-10' : 'grid-cols-7'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="assets" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <FileImage className="w-4 h-4 mr-2" />
               Assets
@@ -52,21 +49,9 @@ export const Layout = ({ children }: LayoutProps) => {
             </TabsTrigger>
             {powerUserMode && (
               <>
-                <TabsTrigger value="shaderlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="shader-lab">
+                <TabsTrigger value="labs" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="labs">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Shader Lab
-                </TabsTrigger>
-                <TabsTrigger value="p5lab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-                  <Shapes className="w-4 h-4 mr-2" />
-                  p5 Lab
-                </TabsTrigger>
-                <TabsTrigger value="strudellab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground" data-tour="strudel-lab">
-                  <Music className="w-4 h-4 mr-2" />
-                  Strudel
-                </TabsTrigger>
-                <TabsTrigger value="sdlab" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
-                  <Image className="w-4 h-4 mr-2" />
-                  SD Lab
+                  Labs
                 </TabsTrigger>
                 <TabsTrigger value="traitlibrary" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
                   <Library className="w-4 h-4 mr-2" />
@@ -114,17 +99,8 @@ export const Layout = ({ children }: LayoutProps) => {
 
           {powerUserMode && (
             <>
-              <TabsContent value="shaderlab" className="mt-0">
-                <ShaderLabTab />
-              </TabsContent>
-              <TabsContent value="p5lab" className="mt-0">
-                <P5LabTab />
-              </TabsContent>
-              <TabsContent value="strudellab" className="mt-0">
-                <StrudelLabTab />
-              </TabsContent>
-              <TabsContent value="sdlab" className="mt-0">
-                <SDLabTab />
+              <TabsContent value="labs" className="mt-0">
+                <LabsTab />
               </TabsContent>
               <TabsContent value="traitlibrary" className="mt-0">
                 <TraitLibraryTab />
