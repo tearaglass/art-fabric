@@ -327,11 +327,12 @@ export class TraitRenderer {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Deterministic visualization of Strudel pattern
-    const pattern = params.pattern || '';
-    const tempo = params.tempo || 120;
+    // Deterministic visualization of Strudel pattern (piano-roll style)
+    const pattern = params.pattern || 'c3 ~ e3 g3 ~ c3 ~ e3 g3';
+    const root = params.root || 'c';
+    const mode = params.mode || 'dorian';
     const steps = 16;
-    const bars = 1;
+    const bars = params.bars || 1;
     
     // Background
     ctx.fillStyle = '#0b0d10';
@@ -410,7 +411,7 @@ export class TraitRenderer {
     // Legend
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace';
-    ctx.fillText(`${presetId} · ${steps}stp x ${bars}bar · ${tempo}bpm`, 10, canvas.height - 10);
+    ctx.fillText(`${root} ${mode} · ${steps}stp x ${bars}bar`, 10, canvas.height - 10);
   }
   
   private parseCells(pattern: string): string[] {

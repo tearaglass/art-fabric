@@ -13,6 +13,7 @@ import { ISFConverter } from '@/lib/shaders/ISFConverter';
 import { useToast } from '@/hooks/use-toast';
 import { compressPNG, shouldCompress, getBase64SizeKB } from '@/lib/utils/imageCompression';
 import { Badge } from '@/components/ui/badge';
+import { ShaderPreview } from '@/components/shader/ShaderPreview';
 
 export const ShaderLabTab = () => {
   const { traitClasses, addTrait, seed } = useProjectStore();
@@ -326,14 +327,16 @@ export const ShaderLabTab = () => {
             </div>
           </div>
 
-          <div className="aspect-square bg-muted rounded border-2 border-border flex items-center justify-center">
-            <canvas
-              ref={canvasRef}
-              width={512}
-              height={512}
-              className="w-full h-full object-contain"
-            />
-          </div>
+          <ShaderPreview
+            fragmentSource={selectedPreset?.fragmentShader}
+            seed={parseFloat(seed)}
+          />
+          <canvas
+            ref={canvasRef}
+            width={512}
+            height={512}
+            className="hidden"
+          />
         </Card>
 
         {/* Uniform Controls */}

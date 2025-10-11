@@ -49,11 +49,34 @@ export default {
         },
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
+        // Laney Spectra colors
+        ink: "#0b0d10",
+        panel: "#10141a",
+        line: "#1b2330",
+        mist: "#9fb3c8",
+        milk: "#e7f2ff",
+        laney: {
+          cyan: "#7bd3ff",
+          neon: "#57ffd3",
+          lilac: "#b08cff",
+          magma: "#ff5e6b",
+          gold: "#ffcf53",
+          acid: "#c2ff4d",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        display: ["General Sans", "Space Grotesk", "Inter", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        glow: "0 0 0 1px rgba(123,211,255,.2), 0 0 24px rgba(123,211,255,.12)",
+      },
+      backgroundImage: {
+        "laney-grad": "linear-gradient(90deg, #7bd3ff 0%, #b08cff 50%, #ff5e6b 100%)",
       },
       keyframes: {
         "accordion-down": {

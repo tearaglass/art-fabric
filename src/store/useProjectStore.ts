@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import seedrandom from 'seedrandom';
 import { eventBus } from '@/lib/events/EventBus';
+import { Patch, DEFAULT_PATCH } from '@/types/Patch';
 
 export interface Trait {
   id: string;
@@ -47,6 +48,7 @@ export interface ProjectState {
   seed: string;
   collectionSize: number;
   powerUserMode: boolean;
+  currentPatch: Patch;
   
   // Actions
   setProjectName: (name: string) => void;
@@ -66,6 +68,8 @@ export interface ProjectState {
   setSeed: (seed: string) => void;
   setCollectionSize: (size: number) => void;
   setPowerUserMode: (enabled: boolean) => void;
+  updatePatch: (updates: Partial<Patch>) => void;
+  resetPatch: () => void;
   saveProject: () => string;
   loadProject: (json: string) => void;
   resetProject: () => void;
@@ -276,6 +280,7 @@ const initialState = {
   seed: 'sample-' + Date.now(),
   collectionSize: 100,
   powerUserMode: false,
+  currentPatch: DEFAULT_PATCH,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -432,6 +437,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setPowerUserMode: (enabled) => set({ powerUserMode: enabled }),
 
+  updatePatch: (updates) => {
+    set((state) => ({
+      currentPatch: { ...state.currentPatch, ...updates },
+    }));
+  },
+
+  resetPatch: () => set({ currentPatch: DEFAULT_PATCH }),
+
   saveProject: () => {
     const state = get();
     const projectData = {
@@ -441,6 +454,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       fxConfigs: state.fxConfigs,
       seed: state.seed,
       collectionSize: state.collectionSize,
+      currentPatch: state.currentPatch,
       version: '1.0',
       timestamp: new Date().toISOString(),
     };
@@ -458,6 +472,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         fxConfigs: data.fxConfigs || [],
         seed: data.seed || initialState.seed,
         collectionSize: data.collectionSize || initialState.collectionSize,
+        currentPatch: data.currentPatch || DEFAULT_PATCH,
       });
       eventBus.emit('project/loaded', { name: projectName, timestamp: Date.now() });
     } catch (error) {

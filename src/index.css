@@ -106,4 +106,15 @@ All colors MUST be HSL.
   .bg-warning {
     background-color: hsl(var(--warning));
   }
+
+  .btn-accent {
+    background: hsl(var(--panel));
+    border: 1px solid color-mix(in lab, hsl(var(--primary)) 40%, #000 60%);
+    color: hsl(var(--foreground));
+  }
+
+  .btn-accent:hover {
+    box-shadow: 0 0 0 1px color-mix(in lab, hsl(var(--primary)) 60%, #000 40%), 
+                0 0 20px color-mix(in lab, hsl(var(--primary)) 20%, transparent);
+  }
 }
