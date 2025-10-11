@@ -109,12 +109,14 @@ const TraitPreview = ({ trait, onRemove }: { trait: any; onRemove: () => void })
 };
 
 export const AssetsTab = () => {
-  const { traitClasses, addTraitClass, addTrait, removeTrait, removeTraitClass } = useProjectStore();
+  const { traitClasses, addTraitClass, addTrait, removeTrait, removeTraitClass, addFolder, removeFolder } = useProjectStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newClassName, setNewClassName] = useState('');
+  const [newFolderName, setNewFolderName] = useState<{[key: string]: string}>({});
+  const [selectedFolder, setSelectedFolder] = useState<{[key: string]: string | null}>({});
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, classId: string) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, classId: string, folderId?: string) => {
     const files = Array.from(e.target.files || []);
     
     files.forEach((file) => {
@@ -123,7 +125,6 @@ export const AssetsTab = () => {
         reader.onload = (event) => {
           const imageSrc = event.target?.result as string;
           
-          // Parse filename for weight (e.g., "Hat__w45.png")
           const nameMatch = file.name.match(/^(.+?)(?:__w(\d+))?\.png$/);
           const traitName = nameMatch?.[1] || file.name;
           const weight = nameMatch?.[2] ? parseInt(nameMatch[2]) : 100;
@@ -136,6 +137,7 @@ export const AssetsTab = () => {
             imageSrc,
             weight,
             className: traitClass?.name || '',
+            folderId,
           });
         };
         reader.readAsDataURL(file);
@@ -145,6 +147,23 @@ export const AssetsTab = () => {
     toast({
       title: 'Traits uploaded',
       description: `${files.length} file(s) added successfully.`,
+    });
+  };
+
+  const createFolder = (classId: string) => {
+    const folderName = newFolderName[classId]?.trim();
+    if (!folderName) return;
+
+    addFolder(classId, {
+      id: `folder-${Date.now()}`,
+      name: folderName,
+    });
+
+    setNewFolderName({ ...newFolderName, [classId]: '' });
+    
+    toast({
+      title: 'Folder created',
+      description: `"${folderName}" folder added.`,
     });
   };
 
@@ -163,6 +182,7 @@ export const AssetsTab = () => {
       name: newClassName,
       zIndex: traitClasses.length,
       traits: [],
+      folders: [],
     };
 
     addTraitClass(newClass);
@@ -222,6 +242,54 @@ export const AssetsTab = () => {
               </div>
 
               <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="New folder..."
+                    value={newFolderName[traitClass.id] || ''}
+                    onChange={(e) => setNewFolderName({ ...newFolderName, [traitClass.id]: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && createFolder(traitClass.id)}
+                    className="bg-input border-border text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => createFolder(traitClass.id)}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+
+                {traitClass.folders.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant={selectedFolder[traitClass.id] === null ? "default" : "outline"}
+                      className="text-xs"
+                      onClick={() => setSelectedFolder({ ...selectedFolder, [traitClass.id]: null })}
+                    >
+                      All
+                    </Button>
+                    {traitClass.folders.map((folder) => (
+                      <div key={folder.id} className="relative group/folder">
+                        <Button
+                          size="sm"
+                          variant={selectedFolder[traitClass.id] === folder.id ? "default" : "outline"}
+                          className="text-xs pr-6"
+                          onClick={() => setSelectedFolder({ ...selectedFolder, [traitClass.id]: folder.id })}
+                        >
+                          {folder.name}
+                        </Button>
+                        <button
+                          onClick={() => removeFolder(traitClass.id, folder.id)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/folder:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <Button
                   variant="outline"
                   className="w-full"
@@ -230,23 +298,29 @@ export const AssetsTab = () => {
                     input.type = 'file';
                     input.accept = 'image/*';
                     input.multiple = true;
-                    input.onchange = (e) => handleFileUpload(e as any, traitClass.id);
+                    input.onchange = (e) => handleFileUpload(e as any, traitClass.id, selectedFolder[traitClass.id] || undefined);
                     input.click();
                   }}
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Traits
+                  Upload Traits {selectedFolder[traitClass.id] && `to ${traitClass.folders.find(f => f.id === selectedFolder[traitClass.id])?.name}`}
                 </Button>
 
                 {/* Trait Thumbnails */}
                 <div className="grid grid-cols-4 gap-2">
-                  {traitClass.traits.map((trait) => (
-                    <TraitPreview
-                      key={trait.id}
-                      trait={trait}
-                      onRemove={() => removeTrait(traitClass.id, trait.id)}
-                    />
-                  ))}
+                  {traitClass.traits
+                    .filter((trait) => 
+                      selectedFolder[traitClass.id] === null || 
+                      selectedFolder[traitClass.id] === undefined ||
+                      trait.folderId === selectedFolder[traitClass.id]
+                    )
+                    .map((trait) => (
+                      <TraitPreview
+                        key={trait.id}
+                        trait={trait}
+                        onRemove={() => removeTrait(traitClass.id, trait.id)}
+                      />
+                    ))}
                 </div>
               </div>
             </Card>

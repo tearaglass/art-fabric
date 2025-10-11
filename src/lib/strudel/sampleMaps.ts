@@ -1,5 +1,5 @@
 // Default sample map and registry for Strudel
-export const DEFAULT_SAMPLE_MAP_URL = 'https://strudel.tidalcycles.org/EmuSP12.json';
+export const DEFAULT_SAMPLE_MAP_URL = 'https://raw.githubusercontent.com/felixroos/dough-samples/main/EmuSP12.json';
 
 export interface SampleMap {
   id: string;
@@ -11,20 +11,26 @@ export interface SampleMap {
 export const SAMPLE_MAPS: SampleMap[] = [
   {
     id: 'default',
-    name: 'Default (Dirt Samples)',
+    name: 'Default (EmuSP12)',
     description: 'Classic TidalCycles drum samples (bd, sd, hh, cp, etc.)',
     url: DEFAULT_SAMPLE_MAP_URL,
   },
   {
-    id: 'vcsl',
-    name: 'VCSL',
-    description: 'Vintage drum machines and synths',
-    url: 'https://raw.githubusercontent.com/ritchse/strudel-vcsl/main/samples.json',
+    id: 'dirt',
+    name: 'Dirt Samples',
+    description: 'Complete Dirt sample collection',
+    url: 'https://raw.githubusercontent.com/felixroos/dough-samples/main/Dirt-Samples.json',
   },
   {
-    id: 'earthsounds',
-    name: 'EarthSounds',
-    description: 'Field recordings and nature sounds',
-    url: 'https://raw.githubusercontent.com/earthsounds/strudel-earthsounds/main/samples.json',
+    id: 'drums',
+    name: 'Drum Machines',
+    description: 'Classic drum machine samples',
+    url: 'https://raw.githubusercontent.com/felixroos/dough-samples/main/tidal-drum-machines.json',
+  },
+  {
+    id: 'piano',
+    name: 'Piano',
+    description: 'Piano samples',
+    url: 'https://raw.githubusercontent.com/felixroos/dough-samples/main/piano.json',
   },
 ];

@@ -15,7 +15,7 @@ export class StrudelEngine {
   private audioContext: AudioContext | null = null;
   private isInitialized = false;
   private currentPattern: Pattern | null = null;
-  private replInstance: any = null;
+  private evalCode: ((code: string) => Promise<Pattern>) | null = null;
 
   private constructor() {}
 
@@ -32,25 +32,36 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Initializing engine...');
       
-      // Initialize audio on user interaction
       await initAudioOnFirstClick();
       this.audioContext = getAudioContext();
       
-      // Create REPL instance - this gives us all Strudel functions (s, note, n, etc.)
-      this.replInstance = repl({
+      const replInstance = repl({
         defaultOutput: webaudioOutput,
         getTime: () => this.audioContext?.currentTime || 0,
       });
 
-      this.scheduler = this.replInstance.scheduler;
+      this.evalCode = replInstance.eval;
+      this.scheduler = replInstance.scheduler;
       
-      // Load default sample map
-      console.log('[Strudel] Loading default samples...');
-      try {
-        await samples(DEFAULT_SAMPLE_MAP_URL);
-        console.log('[Strudel] Samples loaded');
-      } catch (error) {
-        console.warn('[Strudel] Failed to load samples:', error);
+      console.log('[Strudel] REPL ready:', {
+        hasEval: typeof this.evalCode === 'function',
+        hasScheduler: !!this.scheduler,
+      });
+      
+      // Try to load samples with fallback chain
+      const sampleUrls = [
+        'https://raw.githubusercontent.com/felixroos/dough-samples/main/EmuSP12.json',
+        'https://raw.githubusercontent.com/felixroos/dough-samples/main/Dirt-Samples.json',
+      ];
+      
+      for (const url of sampleUrls) {
+        try {
+          await samples(url);
+          console.log('[Strudel] Samples loaded from:', url);
+          break;
+        } catch (error) {
+          console.warn('[Strudel] Failed to load samples from:', url);
+        }
       }
       
       this.isInitialized = true;
@@ -66,26 +77,28 @@ export class StrudelEngine {
       await this.initialize();
     }
 
-    if (!this.replInstance) {
-      throw new Error('REPL not initialized');
-    }
-
     try {
       console.log('[Strudel] Evaluating:', code);
 
-      // Clean up code - remove $: prefix if present (it's optional in REPL)
       const cleanCode = code.trim().replace(/^\$:\s*/, '');
 
-      // Evaluate using REPL - this has all Strudel functions (s, note, n, etc.)
-      const pattern = await this.replInstance.eval(cleanCode);
+      let pattern: any;
+
+      if (typeof this.evalCode === 'function') {
+        pattern = await this.evalCode(cleanCode);
+      } else {
+        pattern = evaluate(cleanCode);
+        if (typeof pattern === 'function') {
+          pattern = pattern();
+        }
+      }
 
       if (!pattern || typeof pattern.queryArc !== 'function') {
-        throw new Error('Code did not produce a valid pattern. Try: s("bd sd hh") or note("c e g").s("piano")');
+        throw new Error('Invalid pattern. Try: s("[bd sd, hh*8]") or note("c e g").s("sine")');
       }
 
       this.currentPattern = pattern;
 
-      // Set pattern on scheduler
       if (this.scheduler) {
         this.scheduler.setPattern(pattern, true);
         console.log('[Strudel] Pattern set');

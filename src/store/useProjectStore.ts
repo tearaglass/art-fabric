@@ -5,9 +5,15 @@ import { eventBus } from '@/lib/events/EventBus';
 export interface Trait {
   id: string;
   name: string;
-  imageSrc: string; // Can be URL or "webgl:presetId:params" for shader traits
+  imageSrc: string;
   weight: number;
   className: string;
+  folderId?: string;
+}
+
+export interface TraitFolder {
+  id: string;
+  name: string;
 }
 
 export interface TraitClass {
@@ -15,6 +21,7 @@ export interface TraitClass {
   name: string;
   zIndex: number;
   traits: Trait[];
+  folders: TraitFolder[];
 }
 
 export interface Rule {
@@ -49,6 +56,8 @@ export interface ProjectState {
   addTrait: (classId: string, trait: Trait) => void;
   updateTrait: (classId: string, traitId: string, updates: Partial<Trait>) => void;
   removeTrait: (classId: string, traitId: string) => void;
+  addFolder: (classId: string, folder: TraitFolder) => void;
+  removeFolder: (classId: string, folderId: string) => void;
   addRule: (rule: Rule) => void;
   removeRule: (id: string) => void;
   addFXConfig: (fx: FXConfig) => void;
@@ -69,6 +78,7 @@ const initialState = {
       id: 'bg-class',
       name: 'Background',
       zIndex: 1,
+      folders: [],
       traits: [
         {
           id: 'bg-1',
@@ -104,6 +114,7 @@ const initialState = {
       id: 'char-class',
       name: 'Character',
       zIndex: 2,
+      folders: [],
       traits: [
         {
           id: 'char-1',
@@ -139,6 +150,7 @@ const initialState = {
       id: 'fx-class',
       name: 'Effects',
       zIndex: 3,
+      folders: [],
       traits: [
         {
           id: 'fx-1',
@@ -174,6 +186,7 @@ const initialState = {
       id: 'audio-class',
       name: 'Audio',
       zIndex: 4,
+      folders: [],
       traits: [
         {
           id: 'audio-1',
@@ -343,6 +356,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       });
     }
   },
+
+  addFolder: (classId, folder) =>
+    set((state) => ({
+      traitClasses: state.traitClasses.map((tc) =>
+        tc.id === classId
+          ? { ...tc, folders: [...tc.folders, folder] }
+          : tc
+      ),
+    })),
+
+  removeFolder: (classId, folderId) =>
+    set((state) => ({
+      traitClasses: state.traitClasses.map((tc) =>
+        tc.id === classId
+          ? { 
+              ...tc, 
+              folders: tc.folders.filter((f) => f.id !== folderId),
+              traits: tc.traits.map((t) => 
+                t.folderId === folderId ? { ...t, folderId: undefined } : t
+              )
+            }
+          : tc
+      ),
+    })),
 
   addRule: (rule) =>
     set((state) => ({

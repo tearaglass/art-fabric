@@ -22,6 +22,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'bg-class',
           name: 'Background',
           zIndex: 1,
+          folders: [],
           traits: [
             {
               id: 'bg-1',
@@ -50,6 +51,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'char-class',
           name: 'Character',
           zIndex: 2,
+          folders: [],
           traits: [
             {
               id: 'char-1',
@@ -107,6 +109,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'bg-class',
           name: 'Background',
           zIndex: 1,
+          folders: [],
           traits: [
             {
               id: 'bg-1',
@@ -128,6 +131,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'pattern-class',
           name: 'Pattern',
           zIndex: 2,
+          folders: [],
           traits: [
             {
               id: 'pat-1',
@@ -178,6 +182,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'bg-class',
           name: 'Background',
           zIndex: 1,
+          folders: [],
           traits: [
             {
               id: 'bg-1',
@@ -199,6 +204,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'element-class',
           name: 'Element',
           zIndex: 2,
+          folders: [],
           traits: [
             {
               id: 'el-1',
@@ -220,6 +226,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'audio-class',
           name: 'Audio',
           zIndex: 3,
+          folders: [],
           traits: [
             {
               id: 'audio-1',
@@ -248,6 +255,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'bg-class',
           name: 'Background',
           zIndex: 1,
+          folders: [],
           traits: [
             {
               id: 'bg-1',
@@ -269,6 +277,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'sprite-class',
           name: 'Sprite',
           zIndex: 2,
+          folders: [],
           traits: [
             {
               id: 'spr-1',
@@ -283,6 +292,7 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = [
           id: 'audio-class',
           name: 'Audio',
           zIndex: 3,
+          folders: [],
           traits: [
             {
               id: 'audio-1',

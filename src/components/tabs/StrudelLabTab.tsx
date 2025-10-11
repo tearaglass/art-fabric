@@ -27,7 +27,7 @@ import { SAMPLE_MAPS, DEFAULT_SAMPLE_MAP_URL } from '@/lib/strudel/sampleMaps';
 
 export function StrudelLabTab() {
   const { toast } = useToast();
-  const [code, setCode] = useState('s("bd sd, hh*8")');
+  const [code, setCode] = useState('s("[bd sd, hh*8]")');
   const [bpm, setBpm] = useState(120);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -327,7 +327,7 @@ export function StrudelLabTab() {
               }
             }}
             className="font-mono text-sm bg-background border-border min-h-[300px] resize-none"
-            placeholder='s("bd sd, hh*8")'
+            placeholder='s("[bd sd, hh*8]")'
           />
 
           {error && (
