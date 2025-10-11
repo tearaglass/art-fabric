@@ -31,7 +31,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="preview" className="w-full">
-          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-8' : 'grid-cols-5'} mb-6 bg-card border border-border`}>
+          <TabsList className={`grid w-full ${powerUserMode ? 'grid-cols-9' : 'grid-cols-5'} mb-6 bg-card border border-border`}>
             <TabsTrigger value="collection" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               <Library className="w-4 h-4 mr-2" />
               Collection
