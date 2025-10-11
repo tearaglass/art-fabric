@@ -23,6 +23,16 @@ export const ExportTab = () => {
   const [progress, setProgress] = useState(0);
   const [validationErrors, setValidationErrors] = useState(0);
   const [exportMode, setExportMode] = useState<'nft' | 'vdmx-clips' | 'vdmx-template' | 'isf-shaders'>('nft');
+  const [traitExportMode, setTraitExportMode] = useState<'static' | 'procedural' | 'hybrid'>('static');
+  const [perClassExportModes, setPerClassExportModes] = useState<Record<string, 'static' | 'procedural' | 'hybrid'>>({});
+
+  const getTraitModality = (imageSrc: string): 'image' | 'webgl' | 'p5' | 'strudel' | 'sd' => {
+    if (imageSrc.startsWith('webgl:')) return 'webgl';
+    if (imageSrc.startsWith('p5:')) return 'p5';
+    if (imageSrc.startsWith('strudel:')) return 'strudel';
+    if (imageSrc.startsWith('sd:')) return 'sd';
+    return 'image';
+  };
 
   const generateToken = async (edition: number, tokenSeed: string) => {
     const rng = seedrandom(tokenSeed);
@@ -68,34 +78,81 @@ export const ExportTab = () => {
       }
     });
 
-    // Render to canvas using TraitRenderer
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas context failed');
-
-    // Sort and render layers
-    const sortedClasses = [...traitClasses].sort((a, b) => a.zIndex - b.zIndex);
-    for (const traitClass of sortedClasses) {
+    // Determine export mode for each trait
+    const traitImages: Record<string, { src: string; mode: string }> = {};
+    
+    for (const traitClass of traitClasses) {
       const trait = traits[traitClass.id];
-      if (trait) {
+      if (!trait) continue;
+
+      const classExportMode = perClassExportModes[traitClass.id] || traitExportMode;
+      const modality = getTraitModality(trait.imageSrc);
+
+      if (modality === 'image' || classExportMode === 'static') {
+        // Render to canvas for static export
         const renderedCanvas = await rendererRef.current.renderTrait(
           trait,
-          canvas.width,
-          canvas.height,
+          512,
+          512,
           tokenSeed
         );
-        ctx.drawImage(renderedCanvas, 0, 0);
+        traitImages[traitClass.id] = {
+          src: renderedCanvas.toDataURL('image/png'),
+          mode: 'static'
+        };
+      } else if (classExportMode === 'procedural') {
+        // Store procedural reference only
+        traitImages[traitClass.id] = {
+          src: trait.imageSrc,
+          mode: 'procedural'
+        };
+      } else if (classExportMode === 'hybrid') {
+        // Store both procedural + thumbnail
+        const renderedCanvas = await rendererRef.current.renderTrait(
+          trait,
+          256,
+          256,
+          tokenSeed
+        );
+        const thumbnail = renderedCanvas.toDataURL('image/png');
+        traitImages[traitClass.id] = {
+          src: `${trait.imageSrc}|thumbnail:${thumbnail}`,
+          mode: 'hybrid'
+        };
       }
     }
 
-    // Get image blob
-    const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((b) => resolve(b!), 'image/png');
-    });
+    // Render composite for static preview (only if at least one static layer)
+    const hasStaticLayers = Object.values(traitImages).some(t => t.mode === 'static');
+    let compositeBlob: Blob | null = null;
+    
+    if (hasStaticLayers) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context failed');
 
-    // Create metadata
+      // Sort and render static layers only
+      const sortedClasses = [...traitClasses].sort((a, b) => a.zIndex - b.zIndex);
+      for (const traitClass of sortedClasses) {
+        const traitImage = traitImages[traitClass.id];
+        if (traitImage && traitImage.mode === 'static') {
+          const img = new Image();
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.src = traitImage.src;
+          });
+          ctx.drawImage(img, 0, 0);
+        }
+      }
+
+      compositeBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/png');
+      });
+    }
+
+    // Create metadata with render mode info
     const dna = Object.entries(traits)
       .map(([classId, trait]) => `${classId}:${trait.id}`)
       .join('|');
@@ -103,7 +160,10 @@ export const ExportTab = () => {
     const metadata = {
       name: `${projectName} #${edition}`,
       description: `Generated with LaneyGen`,
-      image: `images/${edition}.png`,
+      image: compositeBlob ? `images/${edition}.png` : 'procedural',
+      renderMode: traitExportMode,
+      proceduralSeed: tokenSeed,
+      traits: traitImages,
       edition,
       attributes,
       dna,
@@ -112,7 +172,7 @@ export const ExportTab = () => {
       date: new Date().toISOString(),
     };
 
-    return { blob, metadata };
+    return { blob: compositeBlob, metadata };
   };
 
   const handleExport = async () => {
@@ -154,7 +214,9 @@ export const ExportTab = () => {
           );
 
           results.forEach(({ edition, blob, metadata }) => {
-            imagesFolder?.file(`${edition}.png`, blob);
+            if (blob) {
+              imagesFolder?.file(`${edition}.png`, blob);
+            }
             metadataFolder?.file(`${edition}.json`, JSON.stringify(metadata, null, 2));
           });
 
@@ -247,6 +309,42 @@ export const ExportTab = () => {
               {exportMode === 'isf-shaders' && 'All shaders in ISF format for VDMX'}
             </p>
           </div>
+
+          {exportMode === 'nft' && (
+            <div>
+              <label className="text-sm font-medium mb-2 block">Trait Export Mode</label>
+              <Select value={traitExportMode} onValueChange={(v: any) => setTraitExportMode(v)}>
+                <SelectTrigger className="bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="static">
+                    <div>
+                      <div className="font-medium">Static PNG</div>
+                      <div className="text-xs text-muted-foreground">Large files, fixed output (~500KB each)</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="procedural">
+                    <div>
+                      <div className="font-medium">Procedural</div>
+                      <div className="text-xs text-muted-foreground">Tiny files, infinite variations (~1KB each)</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hybrid">
+                    <div>
+                      <div className="font-medium">Hybrid</div>
+                      <div className="text-xs text-muted-foreground">Thumbnails + procedural, best of both</div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {traitExportMode === 'static' && 'Compatible with all platforms, large file size'}
+                {traitExportMode === 'procedural' && '100x smaller exports, requires ProceduralRuntime to render'}
+                {traitExportMode === 'hybrid' && 'Includes low-res previews + full procedural data'}
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="text-sm font-medium mb-2 block">Collection Size</label>
