@@ -319,63 +319,17 @@ export class TraitRenderer {
     params: Record<string, any>,
     seed: string
   ): Promise<void> {
-    const { STRUDEL_PRESETS, StrudelRenderer } = await import('@/lib/strudel/StrudelRenderer');
-    
-    const preset = STRUDEL_PRESETS.find(p => p.id === presetId);
-    if (!preset) {
-      throw new Error(`Strudel preset ${presetId} not found`);
-    }
-
-    const renderer = new StrudelRenderer();
-    const result = await renderer.render({
-      pattern: params.pattern || preset.pattern,
-      tempo: params.tempo || preset.tempo,
-      bars: params.bars || preset.bars,
-      kitId: params.kitId || preset.kitId,
-      seed: parseInt(seed),
-    });
-
-    // Render waveform visualization
+    // TODO: Re-implement after Strudel rebuild
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    // Create audio context to decode waveform
-    const audioContext = new AudioContext();
-    const response = await fetch(result.audioUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Draw waveform
-    ctx.fillStyle = '#000000';
+    
+    // Placeholder visualization
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const channelData = audioBuffer.getChannelData(0);
-    const step = Math.ceil(channelData.length / canvas.width);
-    const amp = canvas.height / 2;
-
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-
-    for (let i = 0; i < canvas.width; i++) {
-      const slice = channelData.slice(i * step, (i + 1) * step);
-      const values = Array.from(slice);
-      const min = Math.min(...values) as number;
-      const max = Math.max(...values) as number;
-      
-      if (i === 0) {
-        ctx.moveTo(i, amp + min * amp);
-      }
-      ctx.lineTo(i, amp + min * amp);
-      ctx.lineTo(i, amp + max * amp);
-    }
-
-    ctx.stroke();
-
-    // Add metadata overlay
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.font = '14px monospace';
-    ctx.fillText(`🔊 ${result.metadata.tempo} BPM | ${result.metadata.bars} bars`, 10, 20);
+    ctx.fillStyle = '#666';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Strudel rendering - coming soon', canvas.width / 2, canvas.height / 2);
   }
 
   private async renderSDTrait(
