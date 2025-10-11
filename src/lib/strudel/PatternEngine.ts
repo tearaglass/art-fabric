@@ -1,44 +1,25 @@
-import { repl } from '@strudel/repl';
-import { getAudioContext, webaudioOutput, initAudioOnFirstClick } from '@strudel/webaudio';
-
-// Import side-effects for pattern DSL
-import '@strudel/mini';
-import '@strudel/tonal';
-import '@strudel/webaudio';
+import { initStrudel, evaluate, hush } from '@strudel/web';
 
 export class PatternEngine {
-  private replInstance: any = null;
-  private ctx: AudioContext | null = null;
+  private initialized = false;
 
   async init() {
-    if (this.replInstance) return;
+    if (this.initialized) return;
 
-    // Initialize audio on user interaction
-    await initAudioOnFirstClick();
-    this.ctx = getAudioContext();
+    // Initialize Strudel with all the required packages
+    await initStrudel();
+    this.initialized = true;
     
-    // Create REPL with proper configuration
-    this.replInstance = repl({
-      defaultOutput: webaudioOutput,
-      editPattern: (pattern) => pattern,
-      onSchedulerError: (err) => {
-        console.error('[Strudel Scheduler Error]', err);
-      },
-    });
-
-    console.log('[PatternEngine] Initialized with @strudel/repl');
+    console.log('[PatternEngine] Initialized with @strudel/web');
   }
 
   async playPattern(code: string) {
     await this.init();
     
-    if (this.ctx?.state === 'suspended') {
-      await this.ctx.resume();
-    }
-
     try {
-      // Use REPL's evaluate method
-      await this.replInstance.evaluate(code);
+      // Use evaluate to parse and play the pattern
+      // evaluate handles mini-notation with double quotes
+      await evaluate(code);
     } catch (err) {
       console.error('[Pattern Error]', err);
       throw new Error(err instanceof Error ? err.message : 'Pattern evaluation failed');
@@ -46,15 +27,19 @@ export class PatternEngine {
   }
 
   stop() {
-    this.replInstance?.scheduler?.stop?.();
+    // hush() stops all playing patterns
+    hush();
   }
 
   isPlaying() {
-    return !!this.replInstance?.scheduler?.started;
+    // @strudel/web doesn't expose playing state directly
+    // We'll return a simple indicator based on initialization
+    return this.initialized;
   }
 
   getContextState() {
-    return this.ctx?.state || 'closed';
+    // Web Audio context state management is handled internally by @strudel/web
+    return this.initialized ? 'running' : 'closed';
   }
 }
 
