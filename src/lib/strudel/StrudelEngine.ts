@@ -71,25 +71,24 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Evaluating pattern:', code);
 
-      // Try REPL eval first (has full Strudel scope + transpilation), fallback to core evaluate
+      // Ensure code has $: prefix for pattern playback
+      let processedCode = code.trim();
+      if (!processedCode.startsWith('$:')) {
+        processedCode = `$: ${processedCode}`;
+      }
+
+      // Use REPL eval which has full Strudel scope and handles $: syntax
       let patternCandidate: any = null;
       if (this.replInstance && typeof this.replInstance.eval === 'function') {
-        patternCandidate = await this.replInstance.eval(code);
+        patternCandidate = await this.replInstance.eval(processedCode);
       } else {
-        patternCandidate = await evaluate(code);
-      }
-
-      // If result isn't a Pattern, try to coerce simple mini-notation strings
-      if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
-        const trimmed = code.trim();
-        const isQuoted = (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"));
-        if (isQuoted && this.replInstance && typeof this.replInstance.eval === 'function') {
-          patternCandidate = await this.replInstance.eval(`s(${trimmed})`);
-        }
+        // Fallback: strip $: and use core evaluate
+        const codeWithoutPrefix = processedCode.replace(/^\$:\s*/, '');
+        patternCandidate = await evaluate(codeWithoutPrefix);
       }
 
       if (!patternCandidate || typeof patternCandidate.queryArc !== 'function') {
-        throw new Error('Your code did not produce a Strudel Pattern. Use s("bd sd"), note("c e g"), etc.');
+        throw new Error('Your code did not produce a Strudel Pattern. Use $: s("bd sd"), $: note("c e g"), etc.');
       }
 
       const pattern = patternCandidate as Pattern;
