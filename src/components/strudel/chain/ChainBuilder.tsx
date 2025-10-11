@@ -51,7 +51,16 @@ export function ChainBuilder({ tiles, onTilesChange }: ChainBuilderProps) {
           <div className="space-y-3">
             {tiles.map((tile, index) => (
               <div key={tile.id} className="flex items-center gap-3">
-                <Tile tile={tile} onRemove={() => handleRemove(tile.id)} />
+                <Tile
+                  tile={tile}
+                  onRemove={() => handleRemove(tile.id)}
+                  onUpdate={(params) => {
+                    const updatedTiles = tiles.map(t =>
+                      t.id === tile.id ? { ...t, params } : t
+                    );
+                    onTilesChange(updatedTiles);
+                  }}
+                />
                 {index < tiles.length - 1 && (
                   <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                 )}

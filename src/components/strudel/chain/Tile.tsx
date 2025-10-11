@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TileInstance } from '@/types/StrudelChain';
 import { TILE_DEFINITIONS } from '@/types/StrudelChain';
+import { TileEditor } from './TileEditor';
 
 interface TileProps {
   tile: TileInstance;
   onRemove: () => void;
+  onUpdate: (params: Record<string, any>) => void;
 }
 
 const CATEGORY_COLORS = {
@@ -20,7 +22,7 @@ const CATEGORY_COLORS = {
   output: 'bg-cyan-500/20 border-cyan-500/50 text-cyan-100',
 };
 
-export function Tile({ tile, onRemove }: TileProps) {
+export function Tile({ tile, onRemove, onUpdate }: TileProps) {
   const definition = TILE_DEFINITIONS.find(d => d.id === tile.definitionId);
   
   const {
@@ -66,11 +68,13 @@ export function Tile({ tile, onRemove }: TileProps) {
         <div className="text-xs opacity-70">
           {Object.entries(tile.params).map(([key, value]) => (
             <span key={key} className="mr-2">
-              {key}: {String(value)}
+              {key}: {typeof value === 'number' ? value.toFixed(2) : String(value)}
             </span>
           ))}
         </div>
       </div>
+      
+      <TileEditor tile={tile} definition={definition} onUpdate={onUpdate} />
       
       <Button
         variant="ghost"

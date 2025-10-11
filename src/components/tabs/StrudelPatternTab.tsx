@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, Code, Grid3x3 } from 'lucide-react';
+import { Play, Square, Code, Grid3x3, RefreshCw } from 'lucide-react';
 import { strudelEngine } from '@/lib/strudel/engine';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -36,19 +36,35 @@ export function StrudelPatternTab() {
   const tilesCode = useMemo(() => {
     if (tiles.length === 0) return '';
     
+    // Ensure we have a source tile
+    const hasSource = tiles.some(t => {
+      const def = TILE_DEFINITIONS.find(d => d.id === t.definitionId);
+      return def?.category === 'source';
+    });
+    
+    if (!hasSource) return ''; // Invalid chain
+    
+    // Build code with proper tempo
+    const bpm = currentPatch.bpm || 120;
+    const cps = (bpm / 60 / 4).toFixed(2);
+    let code = `cps(${cps})\n\n`;
+    
+    // Build chain with proper parameter serialization
     const chain = tiles.map(tile => {
       const def = TILE_DEFINITIONS.find(d => d.id === tile.definitionId);
       if (!def) return '';
       
-      const params = Object.values(tile.params).map(v => 
-        typeof v === 'string' ? `"${v}"` : v
-      );
+      const params = Object.values(tile.params).map(v => {
+        if (typeof v === 'string') return `"${v}"`;
+        if (Array.isArray(v)) return `[${v.join(', ')}]`;
+        return String(v);
+      });
       
       return `${def.fn}(${params.join(', ')})`;
-    }).join('.');
+    }).filter(Boolean).join('.');
     
-    return chain;
-  }, [tiles]);
+    return code + chain;
+  }, [tiles, currentPatch.bpm]);
 
   // Use tiles code in tiles mode, manual code in code mode
   const activeCode = viewMode === 'tiles' ? tilesCode : manualCode;
@@ -93,6 +109,24 @@ export function StrudelPatternTab() {
     strudelEngine.stop();
     setIsPlaying(false);
     setError(null);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      setError(null);
+      await strudelEngine.run(activeCode);
+      strudelEngine.setBpm(currentPatch.bpm);
+      toast({ description: 'Pattern updated!' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        description: message,
+      });
+      setIsPlaying(false);
+      strudelEngine.stop();
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -149,9 +183,15 @@ export function StrudelPatternTab() {
           </div>
         </CardHeader>
         <CardContent className="flex gap-4 p-4">
-          <Button onClick={handlePlay} disabled={isPlaying} variant="default" size="sm">
-            <Play className="w-4 h-4 mr-2" /> Play
-          </Button>
+          {!isPlaying ? (
+            <Button onClick={handlePlay} variant="default" size="sm">
+              <Play className="w-4 h-4 mr-2" /> Play
+            </Button>
+          ) : (
+            <Button onClick={handleUpdate} variant="default" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" /> Update
+            </Button>
+          )}
           <Button onClick={handleStop} disabled={!isPlaying} variant="outline" size="sm">
             <Square className="w-4 h-4 mr-2" /> Stop
           </Button>
