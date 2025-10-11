@@ -1,4 +1,4 @@
-import { repl, Pattern } from '@strudel/core';
+import { repl, Pattern, evaluate } from '@strudel/core';
 import { initAudioOnFirstClick, getAudioContext, webaudioOutput, samples } from '@strudel/webaudio';
 import '@strudel/mini';
 import '@strudel/tonal';
@@ -71,12 +71,8 @@ export class StrudelEngine {
     try {
       console.log('[Strudel] Evaluating pattern:', code);
 
-      // Use REPL's built-in evaluator for full Strudel function support
-      if (!this.replInstance) {
-        throw new Error('REPL not initialized');
-      }
-
-      const pattern = await this.replInstance.eval(code);
+      // Use evaluate function for full Strudel function support
+      const pattern = await evaluate(code);
       
       if (!pattern) {
         throw new Error('Pattern evaluation returned null');
