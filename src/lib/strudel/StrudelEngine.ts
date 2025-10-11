@@ -42,6 +42,15 @@ export class StrudelEngine {
         getTime: () => this.audioContext?.currentTime || 0,
       });
 
+      // Debug: verify REPL scope has Strudel helpers
+      try {
+        const sType = await this.replInstance.eval('typeof s');
+        const soundType = await this.replInstance.eval('typeof sound').catch(() => 'error');
+        console.log('[Strudel] REPL helpers -> s:', sType, ' sound:', soundType);
+      } catch (e) {
+        console.warn('[Strudel] Could not probe REPL scope for helpers:', e);
+      }
+
       this.scheduler = this.replInstance.scheduler;
       
       // Load default sample map for bd, sd, hh, cp, etc.
@@ -74,8 +83,8 @@ export class StrudelEngine {
       // Strip optional "$:" and normalize helpers
       let expr = code.trim().replace(/^\$:\s*/, '');
 
-      // Temporary alias: support "sound(...)" by rewriting to "s(...)"
-      expr = expr.replace(/^sound\s*\(/, 's(');
+      // Rewrite standalone sound(...) to s(...), but keep method .sound(...) intact
+      expr = expr.replace(/(^|[^.])\bsound\s*\(/g, (_m, p1) => `${p1}s(`);
 
       // If it's a bare quoted mini-notation, wrap with s("...")
       const isQuoted = (expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"));
@@ -83,7 +92,7 @@ export class StrudelEngine {
         expr = `s(${expr})`;
       }
 
-      // Evaluate in REPL scope first
+      console.log('[Strudel] Normalized expr:', expr);
       let patternCandidate: any = null;
       if (this.replInstance && typeof this.replInstance.eval === 'function') {
         patternCandidate = await this.replInstance.eval(expr);
