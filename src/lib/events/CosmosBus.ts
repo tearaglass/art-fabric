@@ -63,6 +63,12 @@ export type CosmosEvent =
   | { type: 'p5/interaction'; layerId: string; x: number; y: number; speed: number }
   | { type: 'p5/metrics'; layerId: string; particleCount: number }
   
+  // Affect (Shame Engine)
+  | { type: 'affect/hesitation'; level: number; timestamp: number }
+  | { type: 'affect/overactivity'; level: number; count: number; timestamp: number }
+  | { type: 'affect/tone'; tone: 'neutral' | 'anxious' | 'euphoric' | 'numb'; hesitation: number; overactivity: number; timestamp: number }
+  | { type: 'affect/mutation'; mutationType: 'blur' | 'glitch' | 'decay' | 'fracture'; affect: any; timestamp: number }
+  
   // System
   | { type: 'system/error'; module: string; error: string; trace?: any }
   | { type: 'system/warning'; module: string; message: string };
@@ -93,6 +99,14 @@ export interface CosmosState {
   // Visual feedback sources (for cross-lab routing)
   shader: Record<string, { brightness: number; hue: number; edge: number }>;
   p5: Record<string, { cursorX: number; cursorY: number; speed: number; particleCount: number }>;
+  
+  // Affect (Shame Engine state)
+  affect: {
+    hesitation: number;
+    overactivity: number;
+    emotionalTone: 'neutral' | 'anxious' | 'euphoric' | 'numb';
+    entropy: number;
+  };
   
   // RNG
   seed: string;
@@ -140,6 +154,12 @@ class CosmosBus {
       },
       shader: {},
       p5: {},
+      affect: {
+        hesitation: 0,
+        overactivity: 0,
+        emotionalTone: 'neutral',
+        entropy: 0,
+      },
       seed: initialSeed,
       rng: seedrandom(initialSeed),
       frameCount: 0,
@@ -302,6 +322,18 @@ class CosmosBus {
         this.state.frameCount = event.frameNum;
         this.state.deltaTime = event.deltaTime;
         this.state.fps = 1000 / event.deltaTime;
+        break;
+        
+      case 'affect/hesitation':
+        this.state.affect.hesitation = event.level;
+        break;
+        
+      case 'affect/overactivity':
+        this.state.affect.overactivity = event.level;
+        break;
+        
+      case 'affect/tone':
+        this.state.affect.emotionalTone = event.tone;
         break;
     }
     

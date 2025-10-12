@@ -29,12 +29,27 @@ export interface FabricModulation {
   quantize?: string; // 'chromatic' | 'scale' for MIDI notes
   clamp?: boolean; // prevent out-of-range values
   default?: number; // fallback when source unavailable
+  tags?: string[]; // semantic labels like ["#rhythm", "#light", "#shame"]
+  intent?: string; // human-readable description for AI agents
 }
 
 export interface FabricMeta {
   name: string;
   author?: string;
   createdAt: string;
+}
+
+export interface FabricAffect {
+  hesitation: number; // 0-1, dwell time on controls
+  overactivity: number; // 0-1, rapid parameter changes
+  emotionalTone: 'neutral' | 'anxious' | 'euphoric' | 'numb';
+  entropy: number; // 0-1, system complexity/chaos
+}
+
+export interface FabricFlags {
+  deterministic: boolean; // enforce seeded randomness
+  dreamCycle: 'off' | 'idle' | 'scheduled'; // autonomous drift behavior
+  affectIntensity: number; // 0-1, how much affect mutates visuals
 }
 
 export interface Fabric {
@@ -49,6 +64,8 @@ export interface Fabric {
   };
   fx: Array<{ id: string; type: string; params: Record<string, any> }>;
   modulations: FabricModulation[];
+  affect: FabricAffect;
+  flags: FabricFlags;
 }
 
 // Factory functions
@@ -73,6 +90,17 @@ export function createEmptyFabric(): Fabric {
     },
     fx: [],
     modulations: [],
+    affect: {
+      hesitation: 0,
+      overactivity: 0,
+      emotionalTone: 'neutral',
+      entropy: 0,
+    },
+    flags: {
+      deterministic: true,
+      dreamCycle: 'off',
+      affectIntensity: 0.3,
+    },
   };
 }
 
@@ -129,9 +157,23 @@ export function exportFabric(fabric: Fabric, filename?: string): void {
 function migrateFabric(data: any): Fabric {
   // Handle version migrations here
   if (!data.version || data.version === '0.9') {
-    // Upgrade from old format
     console.log('[Fabric] Migrating from v0.9 to v1.0');
-    // Add migration logic as needed
+    // Add affect and flags if missing
+    if (!data.affect) {
+      data.affect = {
+        hesitation: 0,
+        overactivity: 0,
+        emotionalTone: 'neutral',
+        entropy: 0,
+      };
+    }
+    if (!data.flags) {
+      data.flags = {
+        deterministic: true,
+        dreamCycle: 'off',
+        affectIntensity: 0.3,
+      };
+    }
   }
   return data as Fabric;
 }
