@@ -116,6 +116,17 @@ export class ModMatrix {
         if (rest[0] === 'phase') return cosmos.phase;
         return undefined;
 
+      case 'affect':
+        if (rest[0] === 'hesitation') return cosmos.affect.hesitation;
+        if (rest[0] === 'overactivity') return cosmos.affect.overactivity;
+        if (rest[0] === 'entropy') return cosmos.affect.entropy;
+        if (rest[0] === 'tone') {
+          // Map emotional tone to numeric value
+          const toneMap = { neutral: 0.5, anxious: 0.25, euphoric: 0.75, numb: 0 };
+          return toneMap[cosmos.affect.emotionalTone];
+        }
+        return undefined;
+
       default:
         console.warn(`[ModMatrix] Unknown source module: ${module}`);
         return undefined;
