@@ -8,6 +8,7 @@ import { Settings, Download, Upload, Trash2, Zap, Sparkles } from 'lucide-react'
 import { useProjectStore } from '@/store/useProjectStore';
 import { useToast } from '@/hooks/use-toast';
 import { GALLERY_TEMPLATES } from '@/lib/templates/galleryTemplates';
+import { AffectSettingsPanel } from '@/components/affect/AffectSettingsPanel';
 
 export const SettingsTab = () => {
   const { 
@@ -129,6 +130,9 @@ export const SettingsTab = () => {
           </div>
         </div>
       </Card>
+
+      {/* Affect Settings Panel */}
+      <AffectSettingsPanel />
 
       <Card className="p-6 border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
