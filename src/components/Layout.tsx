@@ -14,6 +14,7 @@ import { PowerUserPanel } from './debug/PowerUserPanel';
 import { SettingsTab } from './tabs/SettingsTab';
 import { TraitLibraryTab } from './tabs/TraitLibraryTab';
 import { PointerLayer } from './strudel/PointerLayer';
+import { AffectOverlay } from './affect/AffectOverlay';
 import { useProjectStore } from '@/store/useProjectStore';
 
 interface LayoutProps {
@@ -28,6 +29,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <ProjectHeader />
       <QuickStartTour />
       <PointerLayer />
+      <AffectOverlay />
       
       <main className="flex-1 container mx-auto px-6 py-6">
         <Tabs defaultValue="preview" className="w-full">
